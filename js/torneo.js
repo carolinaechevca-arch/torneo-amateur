@@ -110,6 +110,19 @@ function actualizarCamposEquipos() {
   if (!contenedor) return;
 
   contenedor.innerHTML = '';
+
+  // Aviso si el número es impar
+  const aviso = document.getElementById('aviso-impar');
+  if (aviso) aviso.remove();
+  if (n % 2 !== 0) {
+    const nota = document.createElement('p');
+    nota.id = 'aviso-impar';
+    nota.className = 'info-texto';
+    nota.style.gridColumn = '1 / -1';
+    nota.innerHTML = '⚠️ Con número impar de equipos, uno descansa por jornada (se indica en el fixture).';
+    contenedor.appendChild(nota);
+  }
+
   for (let i = 1; i <= n; i++) {
     const input = document.createElement('input');
     input.type = 'text';
@@ -238,13 +251,15 @@ async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture) {
    ────────────────────────────────────────────── */
 
 /* Genera el fixture de una vuelta (todos contra todos una vez).
-   Usa el algoritmo de rotación de Berger. */
+   Con número impar de equipos agrega BYE y genera una entrada
+   de "descansa" para el equipo libre en cada jornada. */
 function generarFixtureRoundRobin(equipos) {
   const lista = [...equipos];
-  if (lista.length % 2 !== 0) lista.push('BYE'); // impar: agregar equipo ficticio
+  const esImpar = lista.length % 2 !== 0;
+  if (esImpar) lista.push('BYE');
 
-  const n      = lista.length;
-  const rounds = n - 1;
+  const n        = lista.length;
+  const rounds   = n - 1;
   const porRonda = n / 2;
   const partidos = [];
 
@@ -258,20 +273,29 @@ function generarFixtureRoundRobin(equipos) {
       const local     = current[i];
       const visitante = current[n - 1 - i];
 
-      if (local !== 'BYE' && visitante !== 'BYE') {
+      if (local === 'BYE') {
+        // visitante descansa esta jornada
         partidos.push({
-          jornada: r + 1,
-          id: `J${r + 1}_${i + 1}`,
-          local,
-          visitante,
-          golesLocal: '',
-          golesVisitante: '',
-          estado: 'pendiente'
+          jornada: r + 1, id: `D${r + 1}_${i + 1}`,
+          local: visitante, visitante: 'DESCANSA',
+          golesLocal: '', golesVisitante: '', estado: 'descansa'
+        });
+      } else if (visitante === 'BYE') {
+        // local descansa esta jornada
+        partidos.push({
+          jornada: r + 1, id: `D${r + 1}_${i + 1}`,
+          local, visitante: 'DESCANSA',
+          golesLocal: '', golesVisitante: '', estado: 'descansa'
+        });
+      } else {
+        partidos.push({
+          jornada: r + 1, id: `J${r + 1}_${i + 1}`,
+          local, visitante,
+          golesLocal: '', golesVisitante: '', estado: 'pendiente'
         });
       }
     }
 
-    // Rotar: el último pasa al frente
     rot.unshift(rot.pop());
   }
 

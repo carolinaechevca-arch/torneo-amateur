@@ -49,6 +49,19 @@ function renderizarResultados(jornada) {
   }
 
   contenedor.innerHTML = partidos.map(p => {
+    if (p.estado === 'descansa') {
+      return `
+        <div class="partido-card partido-descansa">
+          <div class="partido-contenido" style="justify-content:center;gap:1rem;">
+            <span style="font-size:1.5rem">😴</span>
+            <div>
+              <div class="equipo-nombre">${p.local}</div>
+              <div class="partido-estado-badge" style="text-align:left;margin-top:.2rem;">Descansa esta jornada</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
     const horario  = horariosActual.find(h => h.partidoId === p.id);
     const jugado   = p.estado === 'jugado';
     const editable = esJornadaActiva && !jugado;

@@ -102,28 +102,38 @@
 
       <!-- Nombre del torneo -->
       <div class="form-grupo">
-        <label for="torneo-nombre">📋 Nombre del Torneo</label>
+        <label for="torneo-nombre">Nombre del Torneo</label>
         <input type="text" id="torneo-nombre" placeholder="Ej: Liga Municipal 2025" maxlength="50"
                autocomplete="off" autocapitalize="words">
       </div>
 
       <!-- Cantidad de equipos -->
       <div class="form-grupo">
-        <label for="num-equipos">👥 Cantidad de Equipos</label>
+        <label for="num-equipos">Cantidad de Equipos</label>
         <select id="num-equipos" onchange="actualizarCamposEquipos()">
           <option value="4">4 equipos</option>
+          <option value="5">5 equipos  ★ uno descansa por jornada</option>
           <option value="6">6 equipos</option>
+          <option value="7">7 equipos  ★ uno descansa por jornada</option>
           <option value="8" selected>8 equipos</option>
+          <option value="9">9 equipos  ★ uno descansa por jornada</option>
           <option value="10">10 equipos</option>
+          <option value="11">11 equipos  ★ uno descansa por jornada</option>
           <option value="12">12 equipos</option>
+          <option value="13">13 equipos  ★ uno descansa por jornada</option>
           <option value="14">14 equipos</option>
+          <option value="15">15 equipos  ★ uno descansa por jornada</option>
           <option value="16">16 equipos</option>
+          <option value="17">17 equipos  ★ uno descansa por jornada</option>
+          <option value="18">18 equipos</option>
+          <option value="19">19 equipos  ★ uno descansa por jornada</option>
+          <option value="20">20 equipos</option>
         </select>
       </div>
 
       <!-- Modalidad -->
       <div class="form-grupo">
-        <label for="modalidad">🔄 Modalidad del Torneo</label>
+        <label for="modalidad">Modalidad del Torneo</label>
         <select id="modalidad">
           <option value="ida">Solo Ida &nbsp;–&nbsp; Todos contra todos una vez</option>
           <option value="ida-vuelta">Ida y Vuelta &nbsp;–&nbsp; Todos contra todos dos veces</option>
@@ -132,7 +142,7 @@
 
       <!-- Nombres de equipos (generados dinámicamente) -->
       <div class="form-grupo">
-        <label>🏟️ Nombres de los Equipos</label>
+        <label>Nombres de los Equipos</label>
         <div id="campos-equipos" class="grid-equipos">
           <!-- Se genera con JS al cambiar num-equipos -->
         </div>

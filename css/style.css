@@ -704,6 +704,7 @@ label   { font-weight: 600; }
 .partido-activo   { border-left-color: var(--c-primary); }
 .partido-jugado   { border-left-color: var(--c-primary-light); opacity: .9; }
 .partido-pendiente { border-left-color: var(--c-border); }
+.partido-descansa { border-left-color: var(--c-text-muted); opacity: .7; background: var(--c-surface); }
 
 .partido-meta {
   font-size: .78rem;
