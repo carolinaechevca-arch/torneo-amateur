@@ -32,6 +32,9 @@
 
 <!-- Switch de tema — siempre visible en todas las pantallas -->
 <div class="tema-switch-wrapper">
+  <button class="btn-logout-fijo oculto" id="btn-logout-fijo" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión">
+    <i class="bi bi-box-arrow-right"></i>
+  </button>
   <button class="tema-switch" onclick="toggleTema()" aria-label="Cambiar tema" title="Cambiar tema">
     <span class="tema-track">
       <span class="tema-thumb">
@@ -169,7 +172,6 @@
     </div>
     <div class="header-der">
       <span class="usuario-nombre" id="usuario-nombre"></span>
-      <button class="btn-icono" onclick="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
     </div>
   </header>
 

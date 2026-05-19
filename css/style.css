@@ -127,6 +127,33 @@ label   { font-weight: 600; }
   top: .85rem;
   right: 1rem;
   z-index: 9997; /* por encima de todo excepto toasts y overlay */
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.btn-logout-fijo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.3);
+  background: rgba(0,0,0,.25);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t), border-color var(--t);
+  backdrop-filter: blur(4px);
+}
+.btn-logout-fijo:hover {
+  background: rgba(192,57,43,.75);
+  border-color: rgba(192,57,43,.9);
+}
+[data-theme="dark"] .btn-logout-fijo {
+  border-color: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
 }
 
 /* Botón = el pill completo */
@@ -529,10 +556,6 @@ label   { font-weight: 600; }
 .header-titulo {
   font-weight: 700;
   font-size: 1.05rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
   color: var(--c-text-on-dark);
 }
 

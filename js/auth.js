@@ -113,6 +113,8 @@ function mostrarPantalla(cual) {
     const el = document.getElementById(`pantalla-${p}`);
     if (el) el.classList.toggle('oculto', p !== cual);
   });
+  const btnLogout = document.getElementById('btn-logout-fijo');
+  if (btnLogout) btnLogout.classList.toggle('oculto', cual === 'login');
 }
 
 /* Inicia el proceso para crear un nuevo torneo */
