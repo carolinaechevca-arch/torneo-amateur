@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestiona tu torneo de fútbol amateur de forma fácil y gratuita">
+  <meta name="theme-color" content="#1D9E75">
+  <title>⚽ Torneo Amateur</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- html2canvas para exportar imágenes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     PANTALLA 1: LOGIN
+     ════════════════════════════════════════ -->
+<div id="pantalla-login" class="pantalla">
+  <div class="login-card">
+    <div class="login-icon">⚽</div>
+    <h1>Torneo Amateur</h1>
+    <p class="login-desc">Gestiona tu torneo de fútbol de forma fácil y rápida.<br>Todo se guarda en tu Google Drive.</p>
+    <button class="btn-google" onclick="iniciarSesion()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Iniciar sesión con Google
+    </button>
+    <p class="login-note">🔒 Tu información es privada y solo tú puedes verla</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PANTALLA 2: CONFIGURACIÓN DEL TORNEO
+     ════════════════════════════════════════ -->
+<div id="pantalla-setup" class="pantalla oculto">
+  <div class="setup-container">
+    <div class="setup-header">
+      <h2>🏆 Crear Nuevo Torneo</h2>
+      <p>Completa la información para comenzar. ¡Es muy fácil!</p>
+    </div>
+
+    <div class="setup-card">
+
+      <!-- Nombre del torneo -->
+      <div class="form-grupo">
+        <label for="torneo-nombre">📋 Nombre del Torneo</label>
+        <input type="text" id="torneo-nombre" placeholder="Ej: Liga Municipal 2025" maxlength="50"
+               autocomplete="off" autocapitalize="words">
+      </div>
+
+      <!-- Cantidad de equipos -->
+      <div class="form-grupo">
+        <label for="num-equipos">👥 Cantidad de Equipos</label>
+        <select id="num-equipos" onchange="actualizarCamposEquipos()">
+          <option value="4">4 equipos</option>
+          <option value="6">6 equipos</option>
+          <option value="8" selected>8 equipos</option>
+          <option value="10">10 equipos</option>
+          <option value="12">12 equipos</option>
+          <option value="14">14 equipos</option>
+          <option value="16">16 equipos</option>
+        </select>
+      </div>
+
+      <!-- Modalidad -->
+      <div class="form-grupo">
+        <label for="modalidad">🔄 Modalidad del Torneo</label>
+        <select id="modalidad">
+          <option value="ida">Solo Ida &nbsp;–&nbsp; Todos contra todos una vez</option>
+          <option value="ida-vuelta">Ida y Vuelta &nbsp;–&nbsp; Todos contra todos dos veces</option>
+        </select>
+      </div>
+
+      <!-- Nombres de equipos (generados dinámicamente) -->
+      <div class="form-grupo">
+        <label>🏟️ Nombres de los Equipos</label>
+        <div id="campos-equipos" class="grid-equipos">
+          <!-- Se genera con JS al cambiar num-equipos -->
+        </div>
+      </div>
+
+      <button class="btn-principal btn-grande" onclick="crearTorneo()" id="btn-crear-torneo">
+        <span id="btn-crear-texto">✅ Crear Torneo</span>
+        <span id="btn-crear-cargando" class="oculto">⏳ Creando en Google Drive...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PANTALLA 3: APP PRINCIPAL
+     ════════════════════════════════════════ -->
+<div id="pantalla-app" class="pantalla oculto">
+
+  <!-- Header fijo -->
+  <header class="app-header">
+    <div class="header-izq">
+      <span class="header-logo">⚽</span>
+      <span class="header-titulo" id="header-titulo-torneo">Torneo Amateur</span>
+    </div>
+    <div class="header-der">
+      <span class="usuario-nombre" id="usuario-nombre"></span>
+      <button class="btn-icono" onclick="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
+    </div>
+  </header>
+
+  <!-- Barra de pestañas -->
+  <nav class="nav-tabs" role="tablist">
+    <button class="tab-btn activo" data-seccion="sec-inicio"      onclick="mostrarSeccion('sec-inicio')"      role="tab">🏠 Inicio</button>
+    <button class="tab-btn"        data-seccion="sec-resultados"   onclick="mostrarSeccion('sec-resultados')"   role="tab">⚽ Resultados</button>
+    <button class="tab-btn"        data-seccion="sec-posiciones"   onclick="mostrarSeccion('sec-posiciones')"   role="tab">📊 Posiciones</button>
+    <button class="tab-btn"        data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">📈 Estadísticas</button>
+    <button class="tab-btn"        data-seccion="sec-jornadas"     onclick="mostrarSeccion('sec-jornadas')"     role="tab">📅 Jornadas</button>
+    <button class="tab-btn"        data-seccion="sec-exportar"     onclick="mostrarSeccion('sec-exportar')"     role="tab">📤 Exportar</button>
+  </nav>
+
+  <!-- Contenido principal -->
+  <main class="app-main">
+
+    <!-- ══ SECCIÓN: INICIO ══════════════════════════ -->
+    <section id="sec-inicio" class="seccion" role="tabpanel">
+      <div class="seccion-header">
+        <h2>🏆 Resumen del Torneo</h2>
+        <button class="btn-secundario btn-pequeño" onclick="iniciarNuevoTorneo()">+ Nuevo Torneo</button>
+      </div>
+
+      <!-- Tarjetas de estadísticas rápidas -->
+      <div class="cards-grid">
+        <div class="card-stat">
+          <div class="card-stat-num" id="stat-equipos">–</div>
+          <div class="card-stat-label">Equipos</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="stat-jornadas">–</div>
+          <div class="card-stat-label">Jornadas</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="stat-jugados">–</div>
+          <div class="card-stat-label">Jugados</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="stat-pendientes">–</div>
+          <div class="card-stat-label">Pendientes</div>
+        </div>
+      </div>
+
+      <!-- Top 3 y próximos partidos -->
+      <div class="inicio-grid">
+        <div class="inicio-col">
+          <h3>🥇 Top 3 Posiciones</h3>
+          <div id="inicio-top3">
+            <p class="sin-datos">Aún no hay partidos jugados</p>
+          </div>
+        </div>
+        <div class="inicio-col">
+          <h3>📅 Próximos Partidos</h3>
+          <div id="inicio-proximos">
+            <p class="sin-datos">Sin partidos programados</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link a Google Sheets -->
+      <div class="inicio-col" style="margin-top:1rem;">
+        <h3>🔗 Tu Hoja de Cálculo en Drive</h3>
+        <a id="link-sheet" href="#" target="_blank" rel="noopener noreferrer" class="btn-sheet oculto">
+          📊 Abrir en Google Sheets
+        </a>
+        <p id="link-sheet-info" class="sin-datos">Crea un torneo para ver el link</p>
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: RESULTADOS ══════════════════════ -->
+    <section id="sec-resultados" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2>⚽ Resultados</h2>
+        <div class="jornada-nav">
+          <button class="btn-icono" onclick="jornadaAnterior()" title="Jornada anterior" aria-label="Jornada anterior">◀</button>
+          <span id="jornada-actual-label" style="min-width:120px;text-align:center;">Jornada 1</span>
+          <button class="btn-icono" onclick="jornadaSiguiente()" title="Jornada siguiente" aria-label="Jornada siguiente">▶</button>
+        </div>
+      </div>
+
+      <div id="partidos-jornada">
+        <p class="sin-datos">Cargando partidos...</p>
+      </div>
+
+      <div id="btn-guardar-resultados-container" class="oculto">
+        <button class="btn-principal btn-grande" onclick="guardarResultados()">
+          💾 Guardar Resultados
+        </button>
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: POSICIONES ══════════════════════ -->
+    <section id="sec-posiciones" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2>📊 Tabla de Posiciones</h2>
+        <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-posiciones-container')">📷 Imagen</button>
+      </div>
+      <div id="tabla-posiciones-container">
+        <p class="sin-datos">Aún no hay resultados para calcular posiciones.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: ESTADÍSTICAS ════════════════════ -->
+    <section id="sec-estadisticas" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2>📈 Estadísticas de Jugadores</h2>
+      </div>
+
+      <!-- Formulario para registrar una estadística -->
+      <div class="stats-form-card">
+        <h3>Registrar Estadística de Partido</h3>
+
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="stat-jornada">📅 Jornada</label>
+            <select id="stat-jornada" onchange="onCambioJornada()">
+              <option value="">Seleccionar...</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label for="stat-partido">⚽ Partido</label>
+            <select id="stat-partido" onchange="onCambioPartido()">
+              <option value="">Seleccionar jornada primero</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="stat-equipo">🏟️ Equipo</label>
+            <select id="stat-equipo">
+              <option value="">Seleccionar partido primero</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label for="stat-jugador">👤 Jugador</label>
+            <input type="text" id="stat-jugador" placeholder="Nombre del jugador"
+                   autocomplete="off" autocapitalize="words" maxlength="40">
+          </div>
+        </div>
+
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="stat-goles">⚽ Goles</label>
+            <input type="number" id="stat-goles" min="0" max="20" value="0">
+          </div>
+          <div class="form-grupo">
+            <label for="stat-amarillas">🟨 Amarillas</label>
+            <input type="number" id="stat-amarillas" min="0" max="2" value="0">
+          </div>
+          <div class="form-grupo">
+            <label for="stat-rojas">🟥 Rojas</label>
+            <input type="number" id="stat-rojas" min="0" max="1" value="0">
+          </div>
+        </div>
+
+        <button class="btn-principal" onclick="guardarEstadistica()">💾 Guardar Estadística</button>
+      </div>
+
+      <!-- Tablas de estadísticas -->
+      <div class="stats-tablas">
+        <div class="stats-col">
+          <div class="seccion-header">
+            <h3>⚽ Goleadores</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-goleadores')">📷</button>
+          </div>
+          <div id="tabla-goleadores">
+            <p class="sin-datos">Sin goles registrados</p>
+          </div>
+        </div>
+        <div class="stats-col">
+          <div class="seccion-header">
+            <h3>🟨 Tarjetas</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-tarjetas')">📷</button>
+          </div>
+          <div id="tabla-tarjetas">
+            <p class="sin-datos">Sin tarjetas registradas</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-col" style="margin-top:1rem;">
+        <div class="seccion-header">
+          <h3>🤝 Ranking Juego Limpio</h3>
+          <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-juego-limpio')">📷</button>
+        </div>
+        <div id="tabla-juego-limpio">
+          <p class="sin-datos">Sin datos de disciplina aún</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: JORNADAS ════════════════════════ -->
+    <section id="sec-jornadas" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2>📅 Calendario de Partidos</h2>
+        <button class="btn-principal btn-pequeño" onclick="guardarJornadas()">💾 Guardar Fechas</button>
+      </div>
+      <p class="info-texto">Asigna fecha, hora y cancha a cada partido. Luego presiona "Guardar Fechas".</p>
+      <div id="calendario-jornadas">
+        <p class="sin-datos">Cargando calendario...</p>
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: EXPORTAR ════════════════════════ -->
+    <section id="sec-exportar" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2>📤 Exportar y Compartir</h2>
+      </div>
+
+      <div class="export-grid">
+
+        <!-- Card: Exportar como imagen -->
+        <div class="export-card">
+          <div class="export-icon">📸</div>
+          <h3>Descargar como Imagen</h3>
+          <p>Guarda cualquier tabla como imagen PNG para compartir por WhatsApp o redes sociales.</p>
+          <div class="export-opciones">
+            <button class="btn-secundario" onclick="exportarTabla('tabla-posiciones-container')">
+              📊 Posiciones
+            </button>
+            <button class="btn-secundario" onclick="exportarTabla('tabla-goleadores')">
+              ⚽ Goleadores
+            </button>
+            <button class="btn-secundario" onclick="exportarTabla('tabla-tarjetas')">
+              🟨 Tarjetas
+            </button>
+            <button class="btn-secundario" onclick="exportarTabla('tabla-juego-limpio')">
+              🤝 Juego Limpio
+            </button>
+          </div>
+        </div>
+
+        <!-- Card: HTML estático -->
+        <div class="export-card">
+          <div class="export-icon">🌐</div>
+          <h3>Página Web para Compartir</h3>
+          <p>Genera un archivo HTML con toda la información del torneo. Puedes enviarlo por WhatsApp y cualquiera puede abrirlo sin instalar nada.</p>
+          <button class="btn-principal" onclick="generarHTMLEstatico()" style="width:100%">
+            ⬇️ Descargar Página Web
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+<!-- FIN pantalla-app -->
+
+<!-- ════════════════════════════════════════
+     ELEMENTOS GLOBALES
+     ════════════════════════════════════════ -->
+
+<!-- Contenedor de mensajes toast -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Overlay de carga -->
+<div id="overlay-carga" class="oculto" role="status" aria-label="Cargando">
+  <div class="carga-contenido">
+    <div class="spinner"></div>
+    <p id="carga-mensaje">Procesando...</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCRIPTS (orden importante)
+     ════════════════════════════════════════ -->
+<script src="js/auth.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/torneo.js"></script>
+<script src="js/resultados.js"></script>
+<script src="js/posiciones.js"></script>
+<script src="js/estadisticas.js"></script>
+<script src="js/jornadas.js"></script>
+<script src="js/exportar.js"></script>
+
+<script>
+  // Punto de entrada: inicializar auth cuando la librería de Google esté lista
+  window.onGoogleLibraryLoad = function () {
+    inicializarAuth();
+  };
+
+  // Si ya hay token en sesión (recarga de página), mostrar app sin re-login
+  (function () {
+    const token  = sessionStorage.getItem('ga_token');
+    const expira = parseInt(sessionStorage.getItem('ga_exp') || '0');
+    if (token && Date.now() < expira) {
+      const datos = cargarTorneoLocal();
+      if (datos && datos.sheetId) {
+        mostrarPantalla('app');
+        cargarDatosApp();
+      } else {
+        mostrarPantalla('setup');
+        actualizarCamposEquipos();
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>
