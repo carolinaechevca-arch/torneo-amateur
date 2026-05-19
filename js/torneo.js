@@ -3,16 +3,20 @@
    ============================================= */
 
 // Claves de localStorage
-const LS_TORNEO   = 'ta_torneo';
-const LS_FIXTURE  = 'ta_fixture';
-const LS_STATS    = 'ta_stats';
-const LS_HORARIOS = 'ta_horarios';
+const LS_TORNEO    = 'ta_torneo';
+const LS_FIXTURE   = 'ta_fixture';
+const LS_STATS     = 'ta_stats';
+const LS_HORARIOS  = 'ta_horarios';
+const LS_JUGADORES = 'ta_jugadores';
+const LS_HISTORIAL = 'ta_historial';
 
 // Estado global de la aplicación
 let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad }
 let fixtureActual   = [];    // array de partidos con resultados
 let statsActual     = [];    // array de estadísticas de jugadores
 let horariosActual  = [];    // array de horarios de partidos
+let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula, celular }
+let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
 
 /* ──────────────────────────────────────────────
@@ -30,7 +34,7 @@ function cargarTorneoLocal() {
 }
 
 function borrarTorneoLocal() {
-  [LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS].forEach(k => localStorage.removeItem(k));
+  [LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS, LS_JUGADORES, LS_HISTORIAL].forEach(k => localStorage.removeItem(k));
 }
 
 function guardarFixtureLocal(fixture) {
@@ -63,15 +67,22 @@ function cargarHorariosLocal() {
   } catch (_) { return []; }
 }
 
+function guardarJugadoresLocal(j) { localStorage.setItem(LS_JUGADORES, JSON.stringify(j)); }
+function cargarJugadoresLocal()   { try { return JSON.parse(localStorage.getItem(LS_JUGADORES) || '[]'); } catch (_) { return []; } }
+function guardarHistorialLocal(h) { localStorage.setItem(LS_HISTORIAL, JSON.stringify(h)); }
+function cargarHistorialLocal()   { try { return JSON.parse(localStorage.getItem(LS_HISTORIAL) || '[]'); } catch (_) { return []; } }
+
 /* ──────────────────────────────────────────────
    CARGA INICIAL DE LA APP
    ────────────────────────────────────────────── */
 
 function cargarDatosApp() {
-  torneoActual   = cargarTorneoLocal();
-  fixtureActual  = cargarFixtureLocal();
-  statsActual    = cargarStatsLocal();
-  horariosActual = cargarHorariosLocal();
+  torneoActual    = cargarTorneoLocal();
+  fixtureActual   = cargarFixtureLocal();
+  statsActual     = cargarStatsLocal();
+  horariosActual  = cargarHorariosLocal();
+  jugadoresActual = cargarJugadoresLocal();
+  historialActual = cargarHistorialLocal();
 
   if (!torneoActual) return;
 
@@ -84,6 +95,8 @@ function cargarDatosApp() {
   renderizarPosiciones();
   renderizarEstadisticas();
   renderizarCalendario();
+  renderizarHistorial();
+  _poblarEquiposJugadores();
 
   // Jornada actual: primera con partidos pendientes
   jornadaViendo = calcularJornadaActual();
@@ -464,4 +477,84 @@ function mostrarCarga(msg = 'Procesando...') {
 /* Oculta el overlay de carga */
 function ocultarCarga() {
   document.getElementById('overlay-carga')?.classList.add('oculto');
+}
+
+/* ──────────────────────────────────────────────
+   GESTIÓN DE JUGADORES POR EQUIPO
+   ────────────────────────────────────────────── */
+
+function _poblarEquiposJugadores() {
+  const sel = document.getElementById('gestion-equipo');
+  if (!sel || !torneoActual) return;
+  sel.innerHTML = '<option value="">Seleccionar equipo...</option>' +
+    torneoActual.equipos.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+/* Agrega un jugador al equipo. Devuelve true si tuvo éxito. */
+function agregarJugador(equipo, nombre, cedula, celular) {
+  nombre = nombre?.trim() || '';
+  if (!nombre) { mostrarError('El nombre del jugador es obligatorio.'); return false; }
+  if (jugadoresActual.some(j => j.equipo === equipo && j.nombre.toLowerCase() === nombre.toLowerCase())) {
+    mostrarError(`"${nombre}" ya está registrado en ${equipo}.`);
+    return false;
+  }
+  jugadoresActual.push({
+    id: `J_${Date.now()}`,
+    equipo,
+    nombre,
+    cedula:  cedula?.trim()  || '',
+    celular: celular?.trim() || ''
+  });
+  guardarJugadoresLocal(jugadoresActual);
+  return true;
+}
+
+/* Guarda el jugador desde el formulario de gestión */
+function guardarJugadorForm() {
+  const equipo  = document.getElementById('gestion-equipo')?.value;
+  const nombre  = document.getElementById('nuevo-jugador-nombre')?.value;
+  const cedula  = document.getElementById('nuevo-jugador-cedula')?.value;
+  const celular = document.getElementById('nuevo-jugador-celular')?.value;
+  if (!equipo) { mostrarError('Selecciona un equipo primero.'); return; }
+  if (agregarJugador(equipo, nombre, cedula, celular)) {
+    ['nuevo-jugador-nombre', 'nuevo-jugador-cedula', 'nuevo-jugador-celular'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    renderizarJugadores();
+    mostrarExito(`Jugador registrado en ${equipo}`);
+  }
+}
+
+/* Renderiza la lista de jugadores del equipo seleccionado */
+function renderizarJugadores() {
+  const equipo = document.getElementById('gestion-equipo')?.value;
+  const lista  = document.getElementById('lista-jugadores');
+  const form   = document.getElementById('form-agregar-jugador');
+  if (!lista) return;
+  if (form) form.classList.toggle('oculto', !equipo);
+  if (!equipo) {
+    lista.innerHTML = '<p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>';
+    return;
+  }
+  const jug = jugadoresActual.filter(j => j.equipo === equipo);
+  lista.innerHTML = jug.length === 0
+    ? '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>'
+    : `<table class="tabla-datos tabla-compacta">
+        <thead><tr><th>Nombre</th><th>Cédula</th><th>Celular</th><th></th></tr></thead>
+        <tbody>${jug.map(j => `
+          <tr>
+            <td>${j.nombre}</td>
+            <td>${j.cedula  || '–'}</td>
+            <td>${j.celular || '–'}</td>
+            <td><button class="btn-peligro btn-xs" onclick="eliminarJugador('${j.id}')">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+}
+
+function eliminarJugador(id) {
+  if (!confirm('¿Eliminar este jugador?')) return;
+  jugadoresActual = jugadoresActual.filter(j => j.id !== id);
+  guardarJugadoresLocal(jugadoresActual);
+  renderizarJugadores();
 }

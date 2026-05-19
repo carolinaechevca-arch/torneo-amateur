@@ -107,7 +107,6 @@ function renderizarPosiciones() {
         </thead>
         <tbody>${filas}</tbody>
       </table>
-      <p class="tabla-nota">🥇 Campeón &nbsp;🥈 Segundo &nbsp;🥉 Tercero</p>
     </div>
   `;
 }

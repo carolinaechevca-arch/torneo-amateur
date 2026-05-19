@@ -860,6 +860,79 @@ label   { font-weight: 600; }
 /* ──────────────────────────────────────────────
    ESTADÍSTICAS
    ────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────
+   PLANTILLA DE JUGADORES
+   ────────────────────────────────────────────── */
+.jugadores-card {
+  background: var(--c-bg-card);
+  border-radius: var(--radio);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--sombra-s);
+  border: 1px solid var(--c-border);
+  border-top: 4px solid var(--c-primary-light);
+}
+
+.btn-peligro {
+  background: var(--c-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radio-s);
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity var(--t);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-peligro:hover { opacity: .8; }
+.btn-xs { padding: 2px 8px; font-size: .75rem; }
+
+/* Formulario inline dentro del formulario de estadísticas */
+.card-inline {
+  background: var(--c-surface);
+  border-radius: var(--radio);
+  padding: 1rem;
+  margin-bottom: .75rem;
+  border: 1px solid var(--c-border);
+}
+
+/* ──────────────────────────────────────────────
+   HISTORIAL DE RESULTADOS
+   ────────────────────────────────────────────── */
+.historial-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--c-border);
+  padding-top: 1rem;
+}
+.historial-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--c-text-secondary);
+  list-style: none;
+  padding: .25rem 0;
+  user-select: none;
+}
+.historial-section > summary::-webkit-details-marker { display: none; }
+.historial-container { margin-top: .75rem; }
+.historial-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .75rem;
+  align-items: center;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: .82rem;
+}
+.historial-item:last-child { border-bottom: none; }
+.historial-fecha   { color: var(--c-text-muted); white-space: nowrap; min-width: 90px; }
+.historial-partido { flex: 1; color: var(--c-text-primary); }
+.historial-prev    { color: var(--c-text-muted); font-size: .78rem; font-style: italic; }
+
+/* ──────────────────────────────────────────────
+   FORMULARIO ESTADÍSTICAS
+   ────────────────────────────────────────────── */
 .stats-form-card {
   background: var(--c-bg-card);
   border-radius: var(--radio);

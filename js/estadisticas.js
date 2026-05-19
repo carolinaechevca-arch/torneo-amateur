@@ -6,21 +6,27 @@
    POPULACIÓN DE SELECTORES EN EL FORMULARIO
    ────────────────────────────────────────────── */
 
-/* Llena el selector de jornadas con las jornadas que tienen partidos jugados */
+function _resetJugadorSel() {
+  const sel = document.getElementById('stat-jugador-sel');
+  if (sel) sel.innerHTML = '<option value="">Seleccionar equipo primero</option>';
+  document.getElementById('inline-agregar-jugador')?.classList.add('oculto');
+}
+
+/* Llena el selector de jornadas (todas, no solo jugadas) */
 function poblarSelectorJornadas() {
   const sel = document.getElementById('stat-jornada');
   if (!sel) return;
 
-  const jornadasJugadas = [
-    ...new Set(fixtureActual.filter(p => p.estado === 'jugado').map(p => p.jornada))
-  ].sort((a, b) => a - b);
+  const jornadas = [...new Set(
+    fixtureActual.filter(p => p.estado !== 'descansa').map(p => p.jornada)
+  )].sort((a, b) => a - b);
 
   sel.innerHTML = '<option value="">Seleccionar jornada...</option>' +
-    jornadasJugadas.map(j => `<option value="${j}">Jornada ${j}</option>`).join('');
+    jornadas.map(j => `<option value="${j}">Jornada ${j}</option>`).join('');
 
-  // Resetear dependientes
   document.getElementById('stat-partido').innerHTML = '<option value="">Seleccionar jornada primero</option>';
   document.getElementById('stat-equipo').innerHTML  = '<option value="">Seleccionar partido primero</option>';
+  _resetJugadorSel();
 }
 
 /* Llena el selector de partidos según la jornada elegida */
@@ -32,15 +38,17 @@ function onCambioJornada() {
 
   if (!jornada) {
     selPartido.innerHTML = '<option value="">Seleccionar jornada primero</option>';
-    selEquipo.innerHTML  = '<option value="">Seleccionar partido primero</option>';
+    if (selEquipo) selEquipo.innerHTML = '<option value="">Seleccionar partido primero</option>';
+    _resetJugadorSel();
     return;
   }
 
-  const partidos = fixtureActual.filter(p => p.jornada === jornada && p.estado === 'jugado');
+  const partidos = fixtureActual.filter(p => p.jornada === jornada && p.estado !== 'descansa');
   selPartido.innerHTML = '<option value="">Seleccionar partido...</option>' +
     partidos.map(p => `<option value="${p.id}">${p.local} vs ${p.visitante}</option>`).join('');
 
-  selEquipo.innerHTML = '<option value="">Seleccionar partido primero</option>';
+  if (selEquipo) selEquipo.innerHTML = '<option value="">Seleccionar partido primero</option>';
+  _resetJugadorSel();
 }
 
 /* Llena el selector de equipos según el partido elegido */
@@ -51,6 +59,7 @@ function onCambioPartido() {
 
   if (!partidoId) {
     selEquipo.innerHTML = '<option value="">Seleccionar partido primero</option>';
+    _resetJugadorSel();
     return;
   }
 
@@ -59,6 +68,47 @@ function onCambioPartido() {
 
   selEquipo.innerHTML = '<option value="">Seleccionar equipo...</option>' +
     [partido.local, partido.visitante].map(e => `<option value="${e}">${e}</option>`).join('');
+  _resetJugadorSel();
+}
+
+/* Llena el selector de jugadores según el equipo elegido */
+function onCambioEquipo() {
+  const equipo = document.getElementById('stat-equipo')?.value;
+  const sel    = document.getElementById('stat-jugador-sel');
+  document.getElementById('inline-agregar-jugador')?.classList.add('oculto');
+  if (!sel) return;
+  if (!equipo) { sel.innerHTML = '<option value="">Seleccionar equipo primero</option>'; return; }
+
+  const jugadores = jugadoresActual.filter(j => j.equipo === equipo);
+  sel.innerHTML = '<option value="">Seleccionar jugador...</option>' +
+    jugadores.map(j => `<option value="${j.nombre}">${j.nombre}</option>`).join('') +
+    '<option value="__nuevo__">➕ Agregar nuevo jugador...</option>';
+}
+
+/* Muestra el formulario inline si el usuario elige "Agregar nuevo" */
+function onCambioJugadorSel() {
+  const val    = document.getElementById('stat-jugador-sel')?.value;
+  const inline = document.getElementById('inline-agregar-jugador');
+  if (inline) inline.classList.toggle('oculto', val !== '__nuevo__');
+}
+
+/* Agrega un jugador desde el formulario inline dentro de estadísticas */
+function agregarJugadorDesdeStats() {
+  const equipo  = document.getElementById('stat-equipo')?.value;
+  const nombre  = document.getElementById('inline-jugador-nombre')?.value?.trim();
+  const cedula  = document.getElementById('inline-jugador-cedula')?.value;
+  const celular = document.getElementById('inline-jugador-celular')?.value;
+  if (!equipo) { mostrarError('Selecciona un equipo primero.'); return; }
+  if (agregarJugador(equipo, nombre, cedula, celular)) {
+    onCambioEquipo();
+    const sel = document.getElementById('stat-jugador-sel');
+    if (sel) sel.value = nombre;
+    document.getElementById('inline-agregar-jugador')?.classList.add('oculto');
+    ['inline-jugador-nombre', 'inline-jugador-cedula', 'inline-jugador-celular'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    renderizarJugadores();
+  }
 }
 
 /* ──────────────────────────────────────────────
@@ -69,15 +119,14 @@ async function guardarEstadistica() {
   const jornada   = parseInt(document.getElementById('stat-jornada')?.value);
   const partidoId = document.getElementById('stat-partido')?.value?.trim();
   const equipo    = document.getElementById('stat-equipo')?.value?.trim();
-  const jugador   = document.getElementById('stat-jugador')?.value?.trim();
+  const jugador   = document.getElementById('stat-jugador-sel')?.value?.trim();
   const goles     = parseInt(document.getElementById('stat-goles')?.value     || 0);
   const amarillas = parseInt(document.getElementById('stat-amarillas')?.value || 0);
   const rojas     = parseInt(document.getElementById('stat-rojas')?.value     || 0);
 
-  // Validaciones
   if (!jornada || !partidoId) { mostrarError('Selecciona la jornada y el partido.'); return; }
   if (!equipo)                { mostrarError('Selecciona el equipo.'); return; }
-  if (!jugador)               { mostrarError('Ingresa el nombre del jugador.'); return; }
+  if (!jugador || jugador === '__nuevo__') { mostrarError('Selecciona o agrega un jugador.'); return; }
   if (goles === 0 && amarillas === 0 && rojas === 0) {
     mostrarError('Ingresa al menos un gol o una tarjeta para guardar.');
     return;
@@ -90,7 +139,6 @@ async function guardarEstadistica() {
     statsActual.push(nuevaStat);
     guardarStatsLocal(statsActual);
 
-    // Agregar fila a la hoja Estadísticas
     if (torneoActual?.sheetId) {
       await agregarFilas(torneoActual.sheetId, 'Estadísticas!A:G', [
         [jornada, partidoId, equipo, jugador, goles, amarillas, rojas]
@@ -99,17 +147,16 @@ async function guardarEstadistica() {
 
     mostrarExito(`✅ Estadística de ${jugador} guardada`);
 
-    // Limpiar formulario
-    document.getElementById('stat-jugador').value  = '';
-    document.getElementById('stat-goles').value    = 0;
-    document.getElementById('stat-amarillas').value = 0;
-    document.getElementById('stat-rojas').value    = 0;
+    document.getElementById('stat-jugador-sel').value  = '';
+    document.getElementById('stat-goles').value        = 0;
+    document.getElementById('stat-amarillas').value    = 0;
+    document.getElementById('stat-rojas').value        = 0;
 
     renderizarEstadisticas();
 
   } catch (err) {
     mostrarError('No se pudo guardar la estadística: ' + err.message);
-    statsActual.pop(); // revertir si falló el Sheets
+    statsActual.pop();
     guardarStatsLocal(statsActual);
   } finally {
     ocultarCarga();
@@ -121,6 +168,7 @@ async function guardarEstadistica() {
    ────────────────────────────────────────────── */
 
 function renderizarEstadisticas() {
+  _poblarEquiposJugadores();
   poblarSelectorJornadas();
   _renderGoleadores();
   _renderTarjetas();

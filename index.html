@@ -261,6 +261,14 @@
           💾 Guardar Resultados
         </button>
       </div>
+
+      <!-- Historial de cambios en resultados -->
+      <details class="historial-section">
+        <summary>📋 Historial de cambios</summary>
+        <div id="historial-resultados" class="historial-container">
+          <p class="sin-datos">No hay cambios registrados aún.</p>
+        </div>
+      </details>
     </section>
 
     <!-- ══ SECCIÓN: POSICIONES ══════════════════════ -->
@@ -278,6 +286,42 @@
     <section id="sec-estadisticas" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
         <h2>📈 Estadísticas de Jugadores</h2>
+      </div>
+
+      <!-- Gestión de jugadores por equipo -->
+      <div class="jugadores-card">
+        <div class="seccion-header" style="margin-bottom:.75rem">
+          <h3>👥 Plantilla por Equipo</h3>
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo" style="max-width:280px">
+            <label for="gestion-equipo">Equipo</label>
+            <select id="gestion-equipo" onchange="renderizarJugadores()">
+              <option value="">Seleccionar equipo...</option>
+            </select>
+          </div>
+        </div>
+        <div id="lista-jugadores">
+          <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
+        </div>
+        <div id="form-agregar-jugador" class="oculto" style="margin-top:.75rem">
+          <h4 style="margin-bottom:.5rem;font-size:.9rem;font-weight:600">Agregar jugador</h4>
+          <div class="form-fila">
+            <div class="form-grupo">
+              <label for="nuevo-jugador-nombre">Nombre *</label>
+              <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
+            </div>
+            <div class="form-grupo">
+              <label for="nuevo-jugador-cedula">Cédula</label>
+              <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
+            </div>
+            <div class="form-grupo">
+              <label for="nuevo-jugador-celular">Celular</label>
+              <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
+            </div>
+          </div>
+          <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()">➕ Agregar jugador</button>
+        </div>
       </div>
 
       <!-- Formulario para registrar una estadística -->
@@ -302,15 +346,36 @@
         <div class="form-fila">
           <div class="form-grupo">
             <label for="stat-equipo">🏟️ Equipo</label>
-            <select id="stat-equipo">
+            <select id="stat-equipo" onchange="onCambioEquipo()">
               <option value="">Seleccionar partido primero</option>
             </select>
           </div>
           <div class="form-grupo">
-            <label for="stat-jugador">👤 Jugador</label>
-            <input type="text" id="stat-jugador" placeholder="Nombre del jugador"
-                   autocomplete="off" autocapitalize="words" maxlength="40">
+            <label for="stat-jugador-sel">👤 Jugador</label>
+            <select id="stat-jugador-sel" onchange="onCambioJugadorSel()">
+              <option value="">Seleccionar equipo primero</option>
+            </select>
           </div>
+        </div>
+
+        <!-- Formulario inline para agregar jugador nuevo -->
+        <div id="inline-agregar-jugador" class="card-inline oculto">
+          <p style="font-size:.85rem;margin-bottom:.5rem;font-weight:600">Registrar nuevo jugador:</p>
+          <div class="form-fila">
+            <div class="form-grupo">
+              <label>Nombre *</label>
+              <input type="text" id="inline-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
+            </div>
+            <div class="form-grupo">
+              <label>Cédula</label>
+              <input type="text" id="inline-jugador-cedula" placeholder="Opcional" maxlength="20">
+            </div>
+            <div class="form-grupo">
+              <label>Celular</label>
+              <input type="tel" id="inline-jugador-celular" placeholder="Opcional" maxlength="15">
+            </div>
+          </div>
+          <button class="btn-secundario btn-pequeño" onclick="agregarJugadorDesdeStats()">✅ Agregar y seleccionar</button>
         </div>
 
         <div class="form-fila">

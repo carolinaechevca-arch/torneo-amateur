@@ -62,9 +62,8 @@ function renderizarResultados(jornada) {
         </div>`;
     }
 
-    const horario  = horariosActual.find(h => h.partidoId === p.id);
-    const jugado   = p.estado === 'jugado';
-    const editable = esJornadaActiva && !jugado;
+    const horario = horariosActual.find(h => h.partidoId === p.id);
+    const jugado  = p.estado === 'jugado';
 
     const fecha = horario?.fecha
       ? new Date(horario.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -73,7 +72,7 @@ function renderizarResultados(jornada) {
     const cancha = horario?.cancha || '';
 
     return `
-      <div class="partido-card ${jugado ? 'partido-jugado' : esJornadaActiva ? 'partido-activo' : 'partido-pendiente'}">
+      <div class="partido-card ${jugado ? 'partido-jugado' : 'partido-pendiente'}">
         ${fecha ? `<div class="partido-meta">${fecha}${hora ? ` – ${hora}` : ''}${cancha ? ` • ${cancha}` : ''}</div>` : ''}
         <div class="partido-contenido">
           <div class="partido-equipo partido-local">
@@ -81,19 +80,13 @@ function renderizarResultados(jornada) {
           </div>
 
           <div class="partido-marcador">
-            ${editable ? `
-              <input type="number" class="input-gol" id="gol-${p.id}-local"
-                     value="${p.golesLocal !== '' ? p.golesLocal : ''}"
-                     min="0" max="99" placeholder="–" aria-label="Goles ${p.local}">
-              <span class="vs-sep">:</span>
-              <input type="number" class="input-gol" id="gol-${p.id}-visitante"
-                     value="${p.golesVisitante !== '' ? p.golesVisitante : ''}"
-                     min="0" max="99" placeholder="–" aria-label="Goles ${p.visitante}">
-            ` : jugado ? `
-              <span class="marcador-fijo">${p.golesLocal} : ${p.golesVisitante}</span>
-            ` : `
-              <span class="marcador-pendiente">vs</span>
-            `}
+            <input type="number" class="input-gol" id="gol-${p.id}-local"
+                   value="${p.golesLocal !== '' ? p.golesLocal : ''}"
+                   min="0" max="99" placeholder="–" aria-label="Goles ${p.local}">
+            <span class="vs-sep">:</span>
+            <input type="number" class="input-gol" id="gol-${p.id}-visitante"
+                   value="${p.golesVisitante !== '' ? p.golesVisitante : ''}"
+                   min="0" max="99" placeholder="–" aria-label="Goles ${p.visitante}">
           </div>
 
           <div class="partido-equipo partido-visitante">
@@ -105,10 +98,10 @@ function renderizarResultados(jornada) {
     `;
   }).join('');
 
-  // Botón guardar: solo visible en jornada activa con partidos pendientes
+  // Botón guardar: visible siempre que haya partidos reales (no solo descansos)
   const btnContainer = document.getElementById('btn-guardar-resultados-container');
   if (btnContainer) {
-    btnContainer.classList.toggle('oculto', !esJornadaActiva);
+    btnContainer.classList.toggle('oculto', partidos.every(p => p.estado === 'descansa'));
   }
 }
 
@@ -117,77 +110,93 @@ function renderizarResultados(jornada) {
    ────────────────────────────────────────────── */
 
 async function guardarResultados() {
-  const partidos = fixtureActual.filter(p => p.jornada === jornadaViendo);
+  const partidos = fixtureActual.filter(p => p.jornada === jornadaViendo && p.estado !== 'descansa');
   let cambios = 0;
+  const ahora = new Date().toISOString();
 
-  // Recoger los marcadores ingresados
   for (const p of partidos) {
-    if (p.estado === 'jugado') continue;
-
     const inputLocal  = document.getElementById(`gol-${p.id}-local`);
     const inputVisita = document.getElementById(`gol-${p.id}-visitante`);
-
     if (!inputLocal || !inputVisita) continue;
 
     const gl = inputLocal.value.trim();
     const gv = inputVisita.value.trim();
+    const prevGL = p.golesLocal;
+    const prevGV = p.golesVisitante;
 
-    if (gl === '' || gv === '') continue; // partido sin completar, omitir
+    if (gl === '' || gv === '') {
+      // Si estaba jugado y se borraron los goles, revertir a pendiente
+      if (p.estado === 'jugado') {
+        p.golesLocal = ''; p.golesVisitante = ''; p.estado = 'pendiente';
+        cambios++;
+      }
+      continue;
+    }
 
     const glNum = parseInt(gl);
     const gvNum = parseInt(gv);
-
     if (isNaN(glNum) || isNaN(gvNum) || glNum < 0 || gvNum < 0) {
-      mostrarError(`Marcador inválido en el partido ${p.local} vs ${p.visitante}.`);
+      mostrarError(`Marcador inválido en ${p.local} vs ${p.visitante}.`);
       return;
     }
 
-    p.golesLocal     = glNum;
-    p.golesVisitante = gvNum;
-    p.estado         = 'jugado';
-    cambios++;
+    if (p.golesLocal !== glNum || p.golesVisitante !== gvNum || p.estado !== 'jugado') {
+      historialActual.push({
+        ts: ahora, jornada: p.jornada,
+        local: p.local, visitante: p.visitante,
+        golesLocal: glNum, golesVisitante: gvNum,
+        prevGolesLocal: prevGL !== '' ? prevGL : null,
+        prevGolesVisitante: prevGV !== '' ? prevGV : null
+      });
+      p.golesLocal = glNum; p.golesVisitante = gvNum; p.estado = 'jugado';
+      cambios++;
+    }
   }
 
   if (cambios === 0) {
-    mostrarError('Ingresa al menos un resultado antes de guardar.');
+    mostrarError('No hay cambios que guardar.');
     return;
   }
 
   mostrarCarga('Guardando resultados...');
-
   try {
-    // Actualizar localStorage
     guardarFixtureLocal(fixtureActual);
-
-    // Sincronizar Fixture en Sheets
+    guardarHistorialLocal(historialActual);
     await _sincronizarFixtureSheets();
-
-    // Recalcular y escribir Posiciones en Sheets
     const posiciones = calcularClasificacion();
     await _sincronizarPosicionesSheets(posiciones);
 
-    mostrarExito(`✅ ${cambios} resultado${cambios > 1 ? 's' : ''} guardado${cambios > 1 ? 's' : ''} correctamente`);
-
-    // Avanzar a la siguiente jornada si esta quedó completa
-    const jornadaCompleta = fixtureActual
-      .filter(p => p.jornada === jornadaViendo)
-      .every(p => p.estado === 'jugado');
-
-    if (jornadaCompleta) {
-      const maxJ = Math.max(...fixtureActual.map(p => p.jornada));
-      if (jornadaViendo < maxJ) jornadaViendo++;
-    }
-
+    mostrarExito(`✅ ${cambios} cambio${cambios > 1 ? 's' : ''} guardado${cambios > 1 ? 's' : ''}`);
     renderizarResultados(jornadaViendo);
     renderizarPosiciones();
     renderizarInicio();
-
+    renderizarHistorial();
   } catch (err) {
     mostrarError('No se pudieron guardar los resultados: ' + err.message);
     console.error(err);
   } finally {
     ocultarCarga();
   }
+}
+
+/* Renderiza el historial de cambios en resultados */
+function renderizarHistorial() {
+  const cont = document.getElementById('historial-resultados');
+  if (!cont) return;
+  if (!historialActual.length) {
+    cont.innerHTML = '<p class="sin-datos">No hay cambios registrados aún.</p>';
+    return;
+  }
+  const items = [...historialActual].reverse().slice(0, 50);
+  cont.innerHTML = items.map(h => {
+    const fecha = new Date(h.ts).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
+    const esCambio = h.prevGolesLocal !== null;
+    return `<div class="historial-item">
+      <span class="historial-fecha">${fecha}</span>
+      <span class="historial-partido">J${h.jornada} · ${h.local} <strong>${h.golesLocal}–${h.golesVisitante}</strong> ${h.visitante}</span>
+      ${esCambio ? `<span class="historial-prev">(antes: ${h.prevGolesLocal}–${h.prevGolesVisitante})</span>` : ''}
+    </div>`;
+  }).join('');
 }
 
 /* Escribe el fixture completo en la hoja "Fixture" de Sheets */
