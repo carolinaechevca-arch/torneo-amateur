@@ -81,16 +81,14 @@
   font-family: 'Poppins', system-ui, sans-serif;
 }
 
-html {
+html, body {
   height: 100%;
-  overflow: hidden;
+  /* Sin overflow:hidden en body — rompería position:fixed */
 }
 
 body {
   background: var(--c-bg);
   color: var(--c-text-primary);
-  height: 100%;
-  overflow: hidden;
   font-size: 16px;
   font-weight: 400;
   line-height: 1.55;
@@ -101,9 +99,23 @@ h1, h2 { font-weight: 800; }
 h3, h4  { font-weight: 700; }
 label   { font-weight: 600; }
 
-/* Scroll interno por pantalla */
-#pantalla-app   { height: 100%; overflow-y: auto; overflow-x: hidden; }
-#pantalla-setup { height: 100%; overflow-y: auto; }
+/* Cada pantalla maneja su propio scroll */
+#pantalla-login {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;   /* solo el login bloquea scroll */
+}
+
+#pantalla-setup {
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+#pantalla-app {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
 /* ──────────────────────────────────────────────
    SWITCH DE TEMA — estilo pill minimalista
