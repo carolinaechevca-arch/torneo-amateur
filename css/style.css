@@ -679,6 +679,9 @@ label   { font-weight: 600; }
 .proximo-equipos  { flex: 1; font-size: .88rem; color: var(--c-text-primary); font-weight: 500; }
 .proximo-equipos span { color: var(--c-text-muted); margin: 0 .3rem; }
 .proximo-fecha    { font-size: .78rem; color: var(--c-text-muted); white-space: nowrap; font-weight: 400; }
+.proximo-descansa { opacity: .6; }
+.proximo-descansa .proximo-jornada { background: var(--c-surface); color: var(--c-text-secondary); }
+.proximo-jugado   { opacity: .55; text-decoration: line-through; }
 
 /* ──────────────────────────────────────────────
    RESULTADOS – Partidos por jornada

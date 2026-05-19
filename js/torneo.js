@@ -366,18 +366,29 @@ function renderizarInicio() {
     }
   }
 
-  // Próximos partidos (los 3 siguientes pendientes)
+  // Próximos partidos — jornada activa completa
   const proxEl = document.getElementById('inicio-proximos');
   if (proxEl) {
-    const pendProxy = fixtureActual.filter(p => p.estado === 'pendiente').slice(0, 3);
-    if (pendProxy.length === 0) {
+    const jornadaActiva = calcularJornadaActual();
+    const partidosJornada = fixtureActual.filter(p => p.jornada === jornadaActiva);
+    const hayPendientes = partidosJornada.some(p => p.estado === 'pendiente');
+
+    if (!hayPendientes || partidosJornada.length === 0) {
       proxEl.innerHTML = '<p class="sin-datos">¡Torneo finalizado! 🏆</p>';
     } else {
-      proxEl.innerHTML = pendProxy.map(p => {
+      proxEl.innerHTML = partidosJornada.map(p => {
         const horario = horariosActual.find(h => h.partidoId === p.id);
         const fecha = horario?.fecha ? new Date(horario.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+        if (p.estado === 'descansa') {
+          return `
+            <div class="proximo-partido proximo-descansa">
+              <div class="proximo-jornada">J${p.jornada}</div>
+              <div class="proximo-equipos">😴 <span>${p.local}</span> descansa</div>
+            </div>
+          `;
+        }
         return `
-          <div class="proximo-partido">
+          <div class="proximo-partido ${p.estado === 'jugado' ? 'proximo-jugado' : ''}">
             <div class="proximo-jornada">J${p.jornada}</div>
             <div class="proximo-equipos">${p.local} <span>vs</span> ${p.visitante}</div>
             ${fecha ? `<div class="proximo-fecha">${fecha}</div>` : ''}
