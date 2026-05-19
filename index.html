@@ -164,26 +164,64 @@
      ════════════════════════════════════════ -->
 <div id="pantalla-app" class="pantalla oculto">
 
-  <!-- Header fijo -->
-  <header class="app-header">
-    <div class="header-izq">
-      <span class="header-logo">⚽</span>
-      <span class="header-titulo" id="header-titulo-torneo">Torneo Amateur</span>
-    </div>
-    <div class="header-der">
-      <span class="usuario-nombre" id="usuario-nombre"></span>
-    </div>
-  </header>
+  <!-- Overlay para cerrar sidebar en móvil -->
+  <div class="sidebar-overlay oculto" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <!-- Barra de pestañas -->
-  <nav class="nav-tabs" role="tablist">
-    <button class="tab-btn activo" data-seccion="sec-inicio"      onclick="mostrarSeccion('sec-inicio')"      role="tab">🏠 Inicio</button>
-    <button class="tab-btn"        data-seccion="sec-resultados"   onclick="mostrarSeccion('sec-resultados')"   role="tab">⚽ Resultados</button>
-    <button class="tab-btn"        data-seccion="sec-posiciones"   onclick="mostrarSeccion('sec-posiciones')"   role="tab">📊 Posiciones</button>
-    <button class="tab-btn"        data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">📈 Estadísticas</button>
-    <button class="tab-btn"        data-seccion="sec-jornadas"     onclick="mostrarSeccion('sec-jornadas')"     role="tab">📅 Jornadas</button>
-    <button class="tab-btn"        data-seccion="sec-exportar"     onclick="mostrarSeccion('sec-exportar')"     role="tab">📤 Exportar</button>
-    <button class="tab-btn tab-jugadores" onclick="abrirModalPlantilla()" role="button" title="Gestionar plantilla de jugadores">👥 Jugadores</button>
+  <!-- Botón hamburguesa (solo visible en móvil) -->
+  <button class="btn-hamburguesa" id="btn-hamburguesa" onclick="toggleSidebar()" aria-label="Abrir menú">
+    <i class="bi bi-list"></i>
+  </button>
+
+  <!-- Sidebar de navegación -->
+  <nav class="app-sidebar" id="app-sidebar">
+
+    <!-- Brand + botón colapsar -->
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <i class="bi bi-trophy-fill sidebar-brand-icono"></i>
+        <span class="sidebar-torneo-nombre" id="header-titulo-torneo">Torneo</span>
+      </div>
+      <button class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Colapsar menú" title="Colapsar menú">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+    </div>
+
+    <!-- Ítems de navegación -->
+    <ul class="sidebar-nav" role="tablist">
+      <li><button class="sidebar-item activo" data-seccion="sec-inicio" onclick="mostrarSeccion('sec-inicio')" role="tab">
+        <i class="bi bi-house-door-fill"></i><span>Inicio</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-resultados" onclick="mostrarSeccion('sec-resultados')" role="tab">
+        <i class="bi bi-calendar2-check"></i><span>Resultados</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-posiciones" onclick="mostrarSeccion('sec-posiciones')" role="tab">
+        <i class="bi bi-bar-chart-fill"></i><span>Posiciones</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">
+        <i class="bi bi-graph-up-arrow"></i><span>Estadísticas</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-jornadas" onclick="mostrarSeccion('sec-jornadas')" role="tab">
+        <i class="bi bi-calendar3"></i><span>Jornadas</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-exportar" onclick="mostrarSeccion('sec-exportar')" role="tab">
+        <i class="bi bi-upload"></i><span>Exportar</span>
+      </button></li>
+      <li><button class="sidebar-item" onclick="abrirModalPlantilla()">
+        <i class="bi bi-people-fill"></i><span>Jugadores</span>
+      </button></li>
+    </ul>
+
+    <!-- Footer: tema + cerrar sesión -->
+    <div class="sidebar-footer">
+      <button class="sidebar-item sidebar-tema-btn" onclick="toggleTema()" title="Cambiar tema">
+        <i class="bi bi-brightness-high-fill sidebar-icon-sol"></i>
+        <i class="bi bi-moon-stars-fill sidebar-icon-luna"></i>
+        <span>Tema</span>
+      </button>
+      <button class="sidebar-item" onclick="cerrarSesion()" title="Cerrar sesión">
+        <i class="bi bi-box-arrow-right"></i><span>Cerrar sesión</span>
+      </button>
+    </div>
   </nav>
 
   <!-- Contenido principal -->

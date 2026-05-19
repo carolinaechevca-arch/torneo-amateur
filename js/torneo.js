@@ -418,19 +418,40 @@ function renderizarInicio() {
 
 function mostrarSeccion(seccionId) {
   document.querySelectorAll('.seccion').forEach(s => s.classList.add('oculto'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('activo'));
+  document.querySelectorAll('.sidebar-item[data-seccion]').forEach(b => b.classList.remove('activo'));
 
   const sec = document.getElementById(seccionId);
   if (sec) sec.classList.remove('oculto');
 
-  const btn = document.querySelector(`[data-seccion="${seccionId}"]`);
+  const btn = document.querySelector(`.sidebar-item[data-seccion="${seccionId}"]`);
   if (btn) btn.classList.add('activo');
+
+  // Close sidebar overlay on mobile after navigation
+  if (window.innerWidth < 768) {
+    document.getElementById('app-sidebar')?.classList.remove('abierto');
+    document.getElementById('sidebar-overlay')?.classList.add('oculto');
+  }
 
   // Renderizar la sección según sea necesaria
   if (seccionId === 'sec-resultados')  renderizarResultados(jornadaViendo);
   if (seccionId === 'sec-posiciones')  renderizarPosiciones();
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
+}
+
+/* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */
+function toggleSidebar() {
+  const sidebar = document.getElementById('app-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+
+  if (window.innerWidth < 768) {
+    const abierto = sidebar.classList.toggle('abierto');
+    if (overlay) overlay.classList.toggle('oculto', !abierto);
+  } else {
+    const colapsado = sidebar.classList.toggle('colapsado');
+    localStorage.setItem('ta_sidebar_col', colapsado ? '1' : '');
+  }
 }
 
 /* ──────────────────────────────────────────────

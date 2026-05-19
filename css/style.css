@@ -48,7 +48,7 @@
   --c-primary-dark:   #288024;
   --c-primary-deeper: #1A4117;
 
-  --c-bg:             #0D1F0D;
+  --c-bg:             #0E0E0F;
   --c-bg-secondary:   #112211;
   --c-bg-card:        #162816;
   --c-surface:        #1E351E;
@@ -113,8 +113,9 @@ label   { font-weight: 600; }
 
 #pantalla-app {
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
 }
 
 /* ──────────────────────────────────────────────
@@ -536,79 +537,231 @@ label   { font-weight: 600; }
 }
 
 /* ──────────────────────────────────────────────
-   HEADER DE LA APP
+   APP LAYOUT — SIDEBAR + MAIN
    ────────────────────────────────────────────── */
-.app-header {
-  background: linear-gradient(90deg, var(--c-primary-deeper) 0%, var(--c-primary-dark) 100%);
-  color: var(--c-text-on-dark);
-  padding: .75rem 1rem;
+
+/* Sidebar color tokens */
+:root {
+  --c-sidebar-bg:           #11360E;
+  --c-sidebar-hover:        rgba(255,255,255,.09);
+  --c-sidebar-active:       rgba(255,255,255,.16);
+  --c-sidebar-border:       rgba(255,255,255,.12);
+  --c-sidebar-text:         rgba(255,255,255,.65);
+  --c-sidebar-accent:       #56AF57;
+}
+[data-theme="dark"] {
+  --c-sidebar-bg:           #111A11;
+}
+
+/* Mobile overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 190;
+  backdrop-filter: blur(2px);
+}
+
+/* ── SIDEBAR ── */
+.app-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--c-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  transition: width .22s ease;
+  z-index: 100;
+}
+.app-sidebar.colapsado { width: 64px; }
+
+/* Sidebar header: brand + toggle */
+.sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 3px 12px rgba(0,0,0,.35);
+  padding: 1rem .75rem .75rem;
+  border-bottom: 1px solid var(--c-sidebar-border);
+  gap: .5rem;
+  min-height: 64px;
+  flex-shrink: 0;
 }
 
-.header-izq { display: flex; align-items: center; gap: .5rem; }
-.header-logo { font-size: 1.5rem; }
-.header-titulo {
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--c-text-on-dark);
-}
-
-.header-der { display: flex; align-items: center; gap: .5rem; }
-
-.usuario-nombre {
-  font-size: .82rem;
-  opacity: .85;
-  display: none;
-  color: var(--c-text-on-dark);
-  font-weight: 500;
-}
-@media (min-width: 480px) { .usuario-nombre { display: block; } }
-
-/* ──────────────────────────────────────────────
-   TABS DE NAVEGACIÓN
-   ────────────────────────────────────────────── */
-.nav-tabs {
+.sidebar-brand {
   display: flex;
-  overflow-x: auto;
-  background: var(--c-primary-dark);
-  border-bottom: 3px solid var(--c-primary-deeper);
-  scrollbar-width: none;
-  position: sticky;
-  top: 57px;
-  z-index: 90;
+  align-items: center;
+  gap: .6rem;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
-.nav-tabs::-webkit-scrollbar { display: none; }
 
-.tab-btn {
-  flex: 0 0 auto;
+.sidebar-brand-icono {
+  font-size: 1.2rem;
+  color: var(--c-sidebar-accent);
+  flex-shrink: 0;
+}
+
+.sidebar-torneo-nombre {
+  font-size: .88rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity .18s ease;
+}
+.app-sidebar.colapsado .sidebar-torneo-nombre { opacity: 0; pointer-events: none; }
+
+.sidebar-toggle-btn {
   background: none;
   border: none;
-  border-bottom: 3px solid transparent;
-  padding: .75rem 1rem;
-  font-size: .85rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.65);
+  color: rgba(255,255,255,.5);
   cursor: pointer;
-  transition: color var(--t), border-color var(--t), background var(--t);
-  white-space: nowrap;
-  margin-bottom: -3px;
+  font-size: .95rem;
+  padding: .2rem;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  transition: color .15s, background .15s, transform .22s ease;
 }
-.tab-btn:hover  { color: var(--c-text-on-dark); background: rgba(255,255,255,.08); }
-.tab-btn.activo { color: var(--c-text-on-dark); border-bottom-color: var(--c-primary-light); }
+.sidebar-toggle-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
+.app-sidebar.colapsado .sidebar-toggle-btn { transform: rotate(180deg); }
 
-/* ──────────────────────────────────────────────
-   CONTENIDO PRINCIPAL
-   ────────────────────────────────────────────── */
+/* Nav list */
+.sidebar-nav {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: .5rem 0;
+  scrollbar-width: none;
+}
+.sidebar-nav::-webkit-scrollbar { display: none; }
+.sidebar-nav li { width: 100%; }
+
+/* Sidebar items */
+.sidebar-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .7rem .9rem;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  color: var(--c-sidebar-text);
+  cursor: pointer;
+  font-size: .875rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  transition: color .15s, background .15s, border-color .15s, padding .22s, gap .22s, justify-content .22s;
+  font-family: inherit;
+}
+.sidebar-item i {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  width: 1.15rem;
+  text-align: center;
+}
+.sidebar-item span {
+  overflow: hidden;
+  transition: opacity .15s, max-width .22s;
+  max-width: 160px;
+}
+.sidebar-item:hover {
+  color: #fff;
+  background: var(--c-sidebar-hover);
+}
+.sidebar-item.activo {
+  color: #fff;
+  background: var(--c-sidebar-active);
+  border-left-color: var(--c-sidebar-accent);
+}
+
+/* Collapsed: center icon, hide text */
+.app-sidebar.colapsado .sidebar-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+.app-sidebar.colapsado .sidebar-item span {
+  opacity: 0;
+  max-width: 0;
+  pointer-events: none;
+}
+
+/* Footer */
+.sidebar-footer {
+  border-top: 1px solid var(--c-sidebar-border);
+  padding: .5rem 0;
+  flex-shrink: 0;
+}
+
+/* Sidebar theme-toggle icons — swap via CSS */
+.sidebar-icon-luna { display: none; }
+[data-theme="dark"] .sidebar-icon-sol  { display: none; }
+[data-theme="dark"] .sidebar-icon-luna { display: inline-block; }
+
+/* ── HAMBURGER BUTTON (mobile only) ── */
+.btn-hamburguesa { display: none; }
+
+@media (max-width: 767px) {
+  .btn-hamburguesa {
+    display: flex;
+    position: fixed;
+    top: .6rem;
+    left: .6rem;
+    z-index: 195;
+    background: var(--c-sidebar-bg);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,.45);
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    z-index: 200;
+    width: 220px !important;
+  }
+  .app-sidebar.abierto { transform: translateX(0); }
+  .app-sidebar.colapsado { transform: translateX(-100%); width: 220px !important; }
+
+  .sidebar-toggle-btn { display: none; }
+
+  .app-main { padding-top: 3.25rem; }
+}
+@media (min-width: 768px) {
+  .btn-hamburguesa { display: none !important; }
+}
+
+/* ── MAIN CONTENT ── */
 .app-main {
-  padding: 1rem;
-  max-width: 900px;
-  margin: 0 auto;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  max-width: none;
+  margin: 0;
+  min-width: 0;
 }
 
 .seccion { padding-bottom: 3rem; }

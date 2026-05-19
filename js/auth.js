@@ -113,8 +113,22 @@ function mostrarPantalla(cual) {
     const el = document.getElementById(`pantalla-${p}`);
     if (el) el.classList.toggle('oculto', p !== cual);
   });
+
+  // El botón de logout flotante solo aparece en setup (en la app va en el sidebar)
   const btnLogout = document.getElementById('btn-logout-fijo');
-  if (btnLogout) btnLogout.classList.toggle('oculto', cual === 'login');
+  if (btnLogout) btnLogout.classList.toggle('oculto', cual !== 'setup');
+
+  // El switch de tema flotante se oculta en la app (el sidebar tiene el suyo)
+  const temaWrapper = document.querySelector('.tema-switch-wrapper');
+  if (temaWrapper) temaWrapper.classList.toggle('oculto', cual === 'app');
+
+  // Al mostrar la app, restaurar estado de colapso del sidebar
+  if (cual === 'app') {
+    const sidebar = document.getElementById('app-sidebar');
+    if (sidebar && window.innerWidth >= 768 && localStorage.getItem('ta_sidebar_col') === '1') {
+      sidebar.classList.add('colapsado');
+    }
+  }
 }
 
 /* Inicia el proceso para crear un nuevo torneo */
