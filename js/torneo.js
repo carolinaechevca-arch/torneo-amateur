@@ -490,8 +490,24 @@ function _poblarEquiposJugadores() {
     torneoActual.equipos.map(e => `<option value="${e}">${e}</option>`).join('');
 }
 
+/* Abre / cierra el modal de gestión de jugadores */
+function abrirModalPlantilla() {
+  const modal = document.getElementById('modal-plantilla');
+  if (!modal) return;
+  _poblarEquiposJugadores();
+  modal.classList.remove('oculto');
+  document.addEventListener('keydown', _cerrarModalEsc);
+}
+
+function cerrarModalPlantilla() {
+  document.getElementById('modal-plantilla')?.classList.add('oculto');
+  document.removeEventListener('keydown', _cerrarModalEsc);
+}
+
+function _cerrarModalEsc(e) { if (e.key === 'Escape') cerrarModalPlantilla(); }
+
 /* Agrega un jugador al equipo. Devuelve true si tuvo éxito. */
-function agregarJugador(equipo, nombre, cedula, celular) {
+function agregarJugador(equipo, nombre, cedula, celular, numeroCamisa) {
   nombre = nombre?.trim() || '';
   if (!nombre) { mostrarError('El nombre del jugador es obligatorio.'); return false; }
   if (jugadoresActual.some(j => j.equipo === equipo && j.nombre.toLowerCase() === nombre.toLowerCase())) {
@@ -502,22 +518,24 @@ function agregarJugador(equipo, nombre, cedula, celular) {
     id: `J_${Date.now()}`,
     equipo,
     nombre,
-    cedula:  cedula?.trim()  || '',
-    celular: celular?.trim() || ''
+    numeroCamisa: numeroCamisa?.toString().trim() || '',
+    cedula:       cedula?.trim()  || '',
+    celular:      celular?.trim() || ''
   });
   guardarJugadoresLocal(jugadoresActual);
   return true;
 }
 
-/* Guarda el jugador desde el formulario de gestión */
+/* Guarda el jugador desde el formulario del modal */
 function guardarJugadorForm() {
-  const equipo  = document.getElementById('gestion-equipo')?.value;
-  const nombre  = document.getElementById('nuevo-jugador-nombre')?.value;
-  const cedula  = document.getElementById('nuevo-jugador-cedula')?.value;
-  const celular = document.getElementById('nuevo-jugador-celular')?.value;
+  const equipo      = document.getElementById('gestion-equipo')?.value;
+  const nombre      = document.getElementById('nuevo-jugador-nombre')?.value;
+  const camisa      = document.getElementById('nuevo-jugador-camisa')?.value;
+  const cedula      = document.getElementById('nuevo-jugador-cedula')?.value;
+  const celular     = document.getElementById('nuevo-jugador-celular')?.value;
   if (!equipo) { mostrarError('Selecciona un equipo primero.'); return; }
-  if (agregarJugador(equipo, nombre, cedula, celular)) {
-    ['nuevo-jugador-nombre', 'nuevo-jugador-cedula', 'nuevo-jugador-celular'].forEach(id => {
+  if (agregarJugador(equipo, nombre, cedula, celular, camisa)) {
+    ['nuevo-jugador-nombre','nuevo-jugador-camisa','nuevo-jugador-cedula','nuevo-jugador-celular'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     renderizarJugadores();
@@ -539,17 +557,57 @@ function renderizarJugadores() {
   const jug = jugadoresActual.filter(j => j.equipo === equipo);
   lista.innerHTML = jug.length === 0
     ? '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>'
-    : `<table class="tabla-datos tabla-compacta">
-        <thead><tr><th>Nombre</th><th>Cédula</th><th>Celular</th><th></th></tr></thead>
+    : `<div class="tabla-wrapper"><table class="tabla-datos tabla-compacta">
+        <thead><tr><th title="N° de camisa">#</th><th>Nombre</th><th>Cédula</th><th>Celular</th><th></th></tr></thead>
         <tbody>${jug.map(j => `
-          <tr>
+          <tr id="jrow-${j.id}">
+            <td class="col-camisa">${j.numeroCamisa || '–'}</td>
             <td>${j.nombre}</td>
             <td>${j.cedula  || '–'}</td>
             <td>${j.celular || '–'}</td>
-            <td><button class="btn-peligro btn-xs" onclick="eliminarJugador('${j.id}')">✕</button></td>
+            <td class="col-acciones">
+              <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar">✏️</button>
+              <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar">✕</button>
+            </td>
           </tr>`).join('')}
         </tbody>
-      </table>`;
+      </table></div>`;
+}
+
+/* Pone una fila en modo edición inline */
+function editarJugador(id) {
+  const j = jugadoresActual.find(j => j.id === id);
+  if (!j) return;
+  const row = document.getElementById(`jrow-${id}`);
+  if (!row) return;
+  row.innerHTML = `
+    <td><input type="number" id="ec-${id}" value="${j.numeroCamisa||''}" min="1" max="99" class="input-edit input-edit-xs" placeholder="#"></td>
+    <td><input type="text"   id="en-${id}" value="${j.nombre}"           maxlength="50"   class="input-edit" required></td>
+    <td><input type="text"   id="ed-${id}" value="${j.cedula||''}"       maxlength="20"   class="input-edit"></td>
+    <td><input type="tel"    id="el-${id}" value="${j.celular||''}"      maxlength="15"   class="input-edit"></td>
+    <td class="col-acciones">
+      <button class="btn-principal btn-xs" onclick="guardarEdicionJugador('${id}')">✓</button>
+      <button class="btn-secundario btn-xs" onclick="renderizarJugadores()">✕</button>
+    </td>`;
+  document.getElementById(`en-${id}`)?.focus();
+}
+
+/* Guarda los cambios de una edición inline */
+function guardarEdicionJugador(id) {
+  const idx = jugadoresActual.findIndex(j => j.id === id);
+  if (idx === -1) return;
+  const nombre = document.getElementById(`en-${id}`)?.value?.trim();
+  if (!nombre) { mostrarError('El nombre es obligatorio.'); return; }
+  jugadoresActual[idx] = {
+    ...jugadoresActual[idx],
+    nombre,
+    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim() || '',
+    cedula:       document.getElementById(`ed-${id}`)?.value?.trim() || '',
+    celular:      document.getElementById(`el-${id}`)?.value?.trim() || ''
+  };
+  guardarJugadoresLocal(jugadoresActual);
+  renderizarJugadores();
+  mostrarExito('Jugador actualizado');
 }
 
 function eliminarJugador(id) {

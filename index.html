@@ -183,6 +183,7 @@
     <button class="tab-btn"        data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">📈 Estadísticas</button>
     <button class="tab-btn"        data-seccion="sec-jornadas"     onclick="mostrarSeccion('sec-jornadas')"     role="tab">📅 Jornadas</button>
     <button class="tab-btn"        data-seccion="sec-exportar"     onclick="mostrarSeccion('sec-exportar')"     role="tab">📤 Exportar</button>
+    <button class="tab-btn tab-jugadores" onclick="abrirModalPlantilla()" role="button" title="Gestionar plantilla de jugadores">👥 Jugadores</button>
   </nav>
 
   <!-- Contenido principal -->
@@ -288,40 +289,10 @@
         <h2>📈 Estadísticas de Jugadores</h2>
       </div>
 
-      <!-- Gestión de jugadores por equipo -->
-      <div class="jugadores-card">
-        <div class="seccion-header" style="margin-bottom:.75rem">
-          <h3>👥 Plantilla por Equipo</h3>
-        </div>
-        <div class="form-fila">
-          <div class="form-grupo" style="max-width:280px">
-            <label for="gestion-equipo">Equipo</label>
-            <select id="gestion-equipo" onchange="renderizarJugadores()">
-              <option value="">Seleccionar equipo...</option>
-            </select>
-          </div>
-        </div>
-        <div id="lista-jugadores">
-          <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
-        </div>
-        <div id="form-agregar-jugador" class="oculto" style="margin-top:.75rem">
-          <h4 style="margin-bottom:.5rem;font-size:.9rem;font-weight:600">Agregar jugador</h4>
-          <div class="form-fila">
-            <div class="form-grupo">
-              <label for="nuevo-jugador-nombre">Nombre *</label>
-              <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
-            </div>
-            <div class="form-grupo">
-              <label for="nuevo-jugador-cedula">Cédula</label>
-              <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
-            </div>
-            <div class="form-grupo">
-              <label for="nuevo-jugador-celular">Celular</label>
-              <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
-            </div>
-          </div>
-          <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()">➕ Agregar jugador</button>
-        </div>
+      <!-- Acceso rápido a la plantilla -->
+      <div class="plantilla-acceso">
+        <span>👥 Registra jugadores por equipo para asignarlos a estadísticas</span>
+        <button class="btn-secundario btn-pequeño" onclick="abrirModalPlantilla()">Gestionar plantilla →</button>
       </div>
 
       <!-- Formulario para registrar una estadística -->
@@ -484,6 +455,56 @@
     </section>
 
   </main>
+
+  <!-- ══ MODAL: GESTIÓN DE JUGADORES ══════════ -->
+  <div id="modal-plantilla" class="modal-overlay oculto" role="dialog" aria-modal="true"
+       aria-labelledby="modal-plantilla-titulo" onclick="if(event.target===this)cerrarModalPlantilla()">
+    <div class="modal-panel">
+
+      <div class="modal-header">
+        <h2 id="modal-plantilla-titulo">👥 Gestión de Jugadores</h2>
+        <button class="modal-cerrar" onclick="cerrarModalPlantilla()" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grupo" style="max-width:320px;margin-bottom:1.25rem">
+          <label for="gestion-equipo">Equipo</label>
+          <select id="gestion-equipo" onchange="renderizarJugadores()">
+            <option value="">Seleccionar equipo...</option>
+          </select>
+        </div>
+
+        <div id="lista-jugadores">
+          <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
+        </div>
+
+        <div id="form-agregar-jugador" class="oculto" style="margin-top:1.5rem">
+          <h3 style="font-size:.95rem;margin-bottom:.75rem;font-weight:700">➕ Agregar jugador</h3>
+          <div class="form-fila">
+            <div class="form-grupo">
+              <label for="nuevo-jugador-nombre">Nombre *</label>
+              <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
+            </div>
+            <div class="form-grupo" style="max-width:100px">
+              <label for="nuevo-jugador-camisa"># Camisa</label>
+              <input type="number" id="nuevo-jugador-camisa" placeholder="Ej: 10" min="1" max="99">
+            </div>
+            <div class="form-grupo">
+              <label for="nuevo-jugador-cedula">Cédula</label>
+              <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
+            </div>
+            <div class="form-grupo">
+              <label for="nuevo-jugador-celular">Celular</label>
+              <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
+            </div>
+          </div>
+          <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()">➕ Agregar jugador</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 <!-- FIN pantalla-app -->
 

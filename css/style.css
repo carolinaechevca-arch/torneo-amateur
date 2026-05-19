@@ -1125,6 +1125,105 @@ label   { font-weight: 600; }
 #carga-mensaje { color: var(--c-text-secondary); font-size: .92rem; font-weight: 500; }
 
 /* ──────────────────────────────────────────────
+   ACCESO RÁPIDO A PLANTILLA (stats section)
+   ────────────────────────────────────────────── */
+.plantilla-acceso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radio);
+  padding: .75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: .88rem;
+  color: var(--c-text-secondary);
+}
+
+/* Tab especial de jugadores en el nav */
+.tab-jugadores {
+  margin-left: auto;
+  border-left: 1px solid rgba(255,255,255,.15) !important;
+  color: var(--c-primary-light) !important;
+  font-weight: 700;
+}
+.tab-jugadores:hover { background: rgba(86,175,87,.2) !important; }
+
+/* ──────────────────────────────────────────────
+   MODAL GESTIÓN DE JUGADORES
+   ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9995;
+  background: rgba(0,0,0,.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem 1rem 3rem;
+  overflow-y: auto;
+  backdrop-filter: blur(3px);
+}
+
+.modal-panel {
+  background: var(--c-bg-card);
+  border-radius: var(--radio);
+  width: 100%;
+  max-width: 720px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+  margin-top: 2rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(90deg, var(--c-primary-deeper), var(--c-primary-dark));
+  color: var(--c-text-on-dark);
+}
+.modal-header h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+.modal-cerrar {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t);
+  flex-shrink: 0;
+}
+.modal-cerrar:hover { background: rgba(255,255,255,.2); }
+
+.modal-body { padding: 1.5rem; }
+
+/* Columnas del modal */
+.col-camisa   { text-align: center; font-weight: 700; width: 50px; }
+.col-acciones { white-space: nowrap; text-align: right; width: 80px; }
+
+/* Inputs inline de edición */
+.input-edit {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--c-primary);
+  border-radius: var(--radio-s);
+  background: var(--c-bg);
+  color: var(--c-text-primary);
+  font-family: inherit;
+  font-size: .85rem;
+}
+.input-edit-xs { max-width: 58px; text-align: center; }
+
+/* ──────────────────────────────────────────────
    RESPONSIVE – pantallas pequeñas
    ────────────────────────────────────────────── */
 @media (max-width: 380px) {
