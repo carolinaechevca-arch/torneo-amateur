@@ -9,8 +9,10 @@ const _TITULOS_EXPORT = {
   'tabla-goleadores-wrap':      '⚽ Goleadores',
   'tabla-tarjetas':             '🟨 Tarjetas',
   'tabla-tarjetas-wrap':        '🟨 Tarjetas',
-  'tabla-juego-limpio':         '🤝 Ranking Juego Limpio',
-  'tabla-juego-limpio-wrap':    '🤝 Ranking Juego Limpio',
+  'tabla-juego-limpio':         '🤝 Juego Limpio',
+  'tabla-juego-limpio-wrap':    '🤝 Juego Limpio',
+  'tabla-valla':                '🥅 Valla Menos Vencida',
+  'tabla-valla-wrap':           '🥅 Valla Menos Vencida',
 };
 
 /* Descarga una tabla como imagen PNG usando html2canvas, incluyendo el título */

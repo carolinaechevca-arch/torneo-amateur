@@ -121,12 +121,22 @@ async function guardarEstadistica() {
   const equipo    = document.getElementById('stat-equipo')?.value?.trim();
   const jugador   = document.getElementById('stat-jugador-sel')?.value?.trim();
   const goles     = parseInt(document.getElementById('stat-goles')?.value     || 0);
-  const amarillas = parseInt(document.getElementById('stat-amarillas')?.value || 0);
-  const rojas     = parseInt(document.getElementById('stat-rojas')?.value     || 0);
+  let   amarillas = parseInt(document.getElementById('stat-amarillas')?.value || 0);
+  let   rojas     = parseInt(document.getElementById('stat-rojas')?.value     || 0);
 
   if (!jornada || !partidoId) { mostrarError('Selecciona la jornada y el partido.'); return; }
   if (!equipo)                { mostrarError('Selecciona el equipo.'); return; }
   if (!jugador || jugador === '__nuevo__') { mostrarError('Selecciona o agrega un jugador.'); return; }
+
+  // Máximo 2 amarillas por partido; 2 amarillas = 1 roja automática
+  if (amarillas > 2) amarillas = 2;
+  if (amarillas === 2 && rojas === 0) {
+    rojas = 1;
+    const inputR = document.getElementById('stat-rojas');
+    if (inputR) inputR.value = 1;
+    mostrarExito('⚠️ 2 amarillas = 1 roja asignada automáticamente');
+  }
+
   if (goles === 0 && amarillas === 0 && rojas === 0) {
     mostrarError('Ingresa al menos un gol o una tarjeta para guardar.');
     return;
@@ -173,6 +183,7 @@ function renderizarEstadisticas() {
   _renderGoleadores();
   _renderTarjetas();
   _renderJuegoLimpio();
+  _renderVallaMenosVencida();
 }
 
 /* Tabla de goleadores (jugadores con más goles) */
@@ -264,12 +275,11 @@ function _renderTarjetas() {
   `;
 }
 
-/* Ranking de juego limpio por equipo (menos tarjetas = mejor posición) */
+/* Ranking de juego limpio — menor puntaje = más limpio */
 function _renderJuegoLimpio() {
   const cont = document.getElementById('tabla-juego-limpio');
   if (!cont || !torneoActual) return;
 
-  // Construir mapa de todos los equipos (aunque no tengan stats)
   const mapa = {};
   torneoActual.equipos.forEach(e => {
     mapa[e] = { equipo: e, amarillas: 0, rojas: 0, puntos: 0 };
@@ -281,19 +291,21 @@ function _renderJuegoLimpio() {
     mapa[s.equipo].rojas     += s.rojas;
   });
 
-  // Puntos de penalización: amarilla = -1, roja = -3
+  // Amarilla = 5 pts · Roja = 10 pts — orden ascendente (menos = más limpio)
   Object.values(mapa).forEach(e => {
-    e.puntos = -(e.amarillas * 1 + e.rojas * 3);
+    e.puntos = e.amarillas * 5 + e.rojas * 10;
   });
 
-  const lista = Object.values(mapa).sort((a, b) => b.puntos - a.puntos);
+  const lista = Object.values(mapa).sort((a, b) =>
+    a.puntos !== b.puntos ? a.puntos - b.puntos : a.equipo.localeCompare(b.equipo)
+  );
 
   const filas = lista.map((e, i) => `
     <tr ${i === 0 ? 'class="primer-lugar"' : ''}>
       <td>${i + 1}</td>
       <td class="col-equipo">${e.equipo}</td>
-      <td class="col-num">${e.amarillas > 0 ? `${e.amarillas} 🟨` : '0'}</td>
-      <td class="col-num">${e.rojas     > 0 ? `${e.rojas}     🟥` : '0'}</td>
+      <td class="col-num">${e.amarillas} 🟨</td>
+      <td class="col-num">${e.rojas} 🟥</td>
       <td class="col-num"><strong>${e.puntos}</strong></td>
     </tr>
   `).join('');
@@ -304,7 +316,43 @@ function _renderJuegoLimpio() {
         <thead><tr><th>#</th><th class="col-equipo">Equipo</th><th>🟨</th><th>🟥</th><th>Pts</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
-      <p class="tabla-nota">Amarilla = –1 pto &nbsp;|&nbsp; Roja = –3 pts</p>
+      <p class="tabla-nota">🟨 Amarilla = 5 pts &nbsp;|&nbsp; 🟥 Roja = 10 pts &nbsp;|&nbsp; Menor puntaje = equipo más limpio</p>
+    </div>
+  `;
+}
+
+/* Valla menos vencida — equipos con menos goles en contra */
+function _renderVallaMenosVencida() {
+  const cont = document.getElementById('tabla-valla');
+  if (!cont || !torneoActual) return;
+
+  const pos = calcularClasificacion();
+
+  if (pos.length === 0) {
+    cont.innerHTML = '<p class="sin-datos">Sin partidos jugados aún</p>';
+    return;
+  }
+
+  const lista = [...pos].sort((a, b) =>
+    a.gc !== b.gc ? a.gc - b.gc : a.equipo.localeCompare(b.equipo)
+  );
+
+  const filas = lista.map((e, i) => `
+    <tr ${i === 0 ? 'class="primer-lugar"' : ''}>
+      <td>${i + 1}</td>
+      <td class="col-equipo">${e.equipo}</td>
+      <td class="col-num">${e.pj}</td>
+      <td class="col-num"><strong>${e.gc}</strong></td>
+    </tr>
+  `).join('');
+
+  cont.innerHTML = `
+    <div id="tabla-valla-wrap" class="tabla-wrapper">
+      <table class="tabla-datos tabla-compacta">
+        <thead><tr><th>#</th><th class="col-equipo">Equipo</th><th title="Partidos jugados">PJ</th><th title="Goles en contra">GC</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <p class="tabla-nota">Menor cantidad de goles en contra = valla menos vencida</p>
     </div>
   `;
 }

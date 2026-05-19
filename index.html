@@ -389,13 +389,24 @@
         </div>
       </div>
 
-      <div class="stats-col" style="margin-top:1rem;">
-        <div class="seccion-header">
-          <h3>🤝 Ranking Juego Limpio</h3>
-          <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-juego-limpio')">📷</button>
+      <div class="stats-tablas" style="margin-top:1rem;">
+        <div class="stats-col">
+          <div class="seccion-header">
+            <h3>🤝 Juego Limpio</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-juego-limpio')">📷</button>
+          </div>
+          <div id="tabla-juego-limpio">
+            <p class="sin-datos">Sin datos de disciplina aún</p>
+          </div>
         </div>
-        <div id="tabla-juego-limpio">
-          <p class="sin-datos">Sin datos de disciplina aún</p>
+        <div class="stats-col">
+          <div class="seccion-header">
+            <h3>🥅 Valla Menos Vencida</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-valla')">📷</button>
+          </div>
+          <div id="tabla-valla">
+            <p class="sin-datos">Sin partidos jugados aún</p>
+          </div>
         </div>
       </div>
     </section>
