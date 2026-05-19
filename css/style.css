@@ -40,13 +40,26 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--fondo);
   color: var(--gris-3);
-  min-height: 100dvh;
+  height: 100%;
+  overflow: hidden;
   font-size: 16px;
   line-height: 1.5;
+}
+
+/* Sólo la app principal (no el login) necesita scroll */
+#pantalla-app {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ──────────────────────────────────────────────
@@ -171,10 +184,7 @@ body {
 .pantalla { min-height: 100dvh; }
 
 #pantalla-login {
-  display: flex;
-  align-items: stretch;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: var(--c1);
 }
@@ -183,7 +193,7 @@ body {
 .login-split {
   display: flex;
   width: 100%;
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -191,10 +201,13 @@ body {
 .login-imagen-panel {
   flex: 1;
   position: relative;
+  height: 100%;
   overflow: hidden;
 }
 
 .login-bg-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -235,6 +248,7 @@ body {
 .login-form-panel {
   width: 420px;
   min-width: 340px;
+  height: 100%;
   background: var(--blanco);
   display: flex;
   align-items: center;
@@ -291,13 +305,13 @@ body {
 @media (max-width: 700px) {
   .login-split {
     flex-direction: column;
-    height: 100dvh;
+    height: 100%;
     overflow: hidden;
   }
 
   .login-imagen-panel {
-    flex: 0 0 45dvh;
-    height: 45dvh;
+    flex: 0 0 45%;
+    height: 45%;
   }
 
   .login-imagen-overlay {
@@ -313,6 +327,7 @@ body {
   .login-form-panel {
     width: 100%;
     min-width: auto;
+    height: auto;
     flex: 1;
     padding: 2rem 1.5rem;
     border-radius: 20px 20px 0 0;
@@ -332,7 +347,8 @@ body {
 #pantalla-setup {
   background: var(--fondo);
   padding: 2rem 1rem;
-  min-height: 100dvh;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .setup-container { max-width: 680px; margin: 0 auto; }
