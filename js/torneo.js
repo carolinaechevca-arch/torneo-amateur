@@ -543,7 +543,27 @@ function guardarJugadorForm() {
   }
 }
 
-/* Renderiza la lista de jugadores del equipo seleccionado */
+/* Devuelve los totales de estadísticas de un jugador calculados desde statsActual */
+function _statsJugador(equipo, nombre) {
+  return statsActual
+    .filter(s => s.equipo === equipo && s.jugador === nombre)
+    .reduce((acc, s) => ({
+      goles:     acc.goles     + (Number(s.goles)     || 0),
+      amarillas: acc.amarillas + (Number(s.amarillas) || 0),
+      rojas:     acc.rojas     + (Number(s.rojas)     || 0)
+    }), { goles: 0, amarillas: 0, rojas: 0 });
+}
+
+/* Reemplaza todas las entradas de un jugador en statsActual con un único total corregido */
+function _corregirStatsJugador(equipo, nombreAnterior, nombreNuevo, goles, amarillas, rojas) {
+  statsActual = statsActual.filter(s => !(s.equipo === equipo && s.jugador === nombreAnterior));
+  if (goles > 0 || amarillas > 0 || rojas > 0) {
+    statsActual.push({ jornada: 0, partidoId: 'CORR', equipo, jugador: nombreNuevo, goles, amarillas, rojas });
+  }
+  guardarStatsLocal(statsActual);
+}
+
+/* Renderiza la lista de jugadores con sus estadísticas, ordenados por goles desc */
 function renderizarJugadores() {
   const equipo = document.getElementById('gestion-equipo')?.value;
   const lista  = document.getElementById('lista-jugadores');
@@ -554,59 +574,88 @@ function renderizarJugadores() {
     lista.innerHTML = '<p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>';
     return;
   }
-  const jug = jugadoresActual.filter(j => j.equipo === equipo);
-  lista.innerHTML = jug.length === 0
-    ? '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>'
-    : `<div class="tabla-wrapper"><table class="tabla-datos tabla-compacta">
-        <thead><tr><th title="N° de camisa">#</th><th>Nombre</th><th>Cédula</th><th>Celular</th><th></th></tr></thead>
-        <tbody>${jug.map(j => `
-          <tr id="jrow-${j.id}">
-            <td class="col-camisa">${j.numeroCamisa || '–'}</td>
-            <td>${j.nombre}</td>
-            <td>${j.cedula  || '–'}</td>
-            <td>${j.celular || '–'}</td>
-            <td class="col-acciones">
-              <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar">✏️</button>
-              <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar">✕</button>
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div>`;
+
+  // Enriquecer cada jugador con sus totales y ordenar por goles desc
+  const jug = jugadoresActual
+    .filter(j => j.equipo === equipo)
+    .map(j => ({ ...j, ..._statsJugador(j.equipo, j.nombre) }))
+    .sort((a, b) => b.goles - a.goles || a.nombre.localeCompare(b.nombre));
+
+  if (jug.length === 0) {
+    lista.innerHTML = '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>';
+    return;
+  }
+
+  lista.innerHTML = `<div class="tabla-wrapper"><table class="tabla-datos tabla-compacta">
+    <thead>
+      <tr>
+        <th title="N° de camisa">#</th>
+        <th>Nombre</th>
+        <th title="Goles">⚽</th>
+        <th title="Tarjetas amarillas">🟨</th>
+        <th title="Tarjetas rojas">🟥</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>${jug.map(j => `
+      <tr id="jrow-${j.id}">
+        <td class="col-camisa">${j.numeroCamisa || '–'}</td>
+        <td><strong>${j.nombre}</strong></td>
+        <td class="col-num">${j.goles}</td>
+        <td class="col-num">${j.amarillas}</td>
+        <td class="col-num">${j.rojas}</td>
+        <td class="col-acciones">
+          <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar">✏️</button>
+          <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar">✕</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
 }
 
-/* Pone una fila en modo edición inline */
+/* Pone una fila en modo edición inline (datos personales + estadísticas) */
 function editarJugador(id) {
   const j = jugadoresActual.find(j => j.id === id);
   if (!j) return;
+  const st  = _statsJugador(j.equipo, j.nombre);
   const row = document.getElementById(`jrow-${id}`);
   if (!row) return;
   row.innerHTML = `
-    <td><input type="number" id="ec-${id}" value="${j.numeroCamisa||''}" min="1" max="99" class="input-edit input-edit-xs" placeholder="#"></td>
-    <td><input type="text"   id="en-${id}" value="${j.nombre}"           maxlength="50"   class="input-edit" required></td>
-    <td><input type="text"   id="ed-${id}" value="${j.cedula||''}"       maxlength="20"   class="input-edit"></td>
-    <td><input type="tel"    id="el-${id}" value="${j.celular||''}"      maxlength="15"   class="input-edit"></td>
+    <td><input type="number" id="ec-${id}" value="${j.numeroCamisa||''}" min="1" max="99"  class="input-edit input-edit-xs" placeholder="#"></td>
+    <td><input type="text"   id="en-${id}" value="${j.nombre}"           maxlength="50"    class="input-edit" required></td>
+    <td><input type="number" id="eg-${id}" value="${st.goles}"     min="0" max="999"        class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="ea-${id}" value="${st.amarillas}" min="0" max="999"        class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="er-${id}" value="${st.rojas}"     min="0" max="999"        class="input-edit input-edit-xs"></td>
     <td class="col-acciones">
-      <button class="btn-principal btn-xs" onclick="guardarEdicionJugador('${id}')">✓</button>
+      <button class="btn-principal  btn-xs" onclick="guardarEdicionJugador('${id}')">✓</button>
       <button class="btn-secundario btn-xs" onclick="renderizarJugadores()">✕</button>
     </td>`;
   document.getElementById(`en-${id}`)?.focus();
 }
 
-/* Guarda los cambios de una edición inline */
+/* Guarda los cambios de una edición inline (datos + estadísticas) */
 function guardarEdicionJugador(id) {
   const idx = jugadoresActual.findIndex(j => j.id === id);
   if (idx === -1) return;
+  const j      = jugadoresActual[idx];
   const nombre = document.getElementById(`en-${id}`)?.value?.trim();
   if (!nombre) { mostrarError('El nombre es obligatorio.'); return; }
+
+  const goles     = Math.max(0, parseInt(document.getElementById(`eg-${id}`)?.value || 0));
+  const amarillas = Math.max(0, parseInt(document.getElementById(`ea-${id}`)?.value || 0));
+  const rojas     = Math.max(0, parseInt(document.getElementById(`er-${id}`)?.value || 0));
+
   jugadoresActual[idx] = {
-    ...jugadoresActual[idx],
+    ...j,
     nombre,
-    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim() || '',
-    cedula:       document.getElementById(`ed-${id}`)?.value?.trim() || '',
-    celular:      document.getElementById(`el-${id}`)?.value?.trim() || ''
+    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim() || ''
   };
   guardarJugadoresLocal(jugadoresActual);
+
+  _corregirStatsJugador(j.equipo, j.nombre, nombre, goles, amarillas, rojas);
+
   renderizarJugadores();
+  renderizarEstadisticas();
   mostrarExito('Jugador actualizado');
 }
 

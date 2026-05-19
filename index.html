@@ -368,24 +368,13 @@
       </div>
 
       <!-- Tablas de estadísticas -->
-      <div class="stats-tablas">
-        <div class="stats-col">
-          <div class="seccion-header">
-            <h3>⚽ Goleadores</h3>
-            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-goleadores')">📷</button>
-          </div>
-          <div id="tabla-goleadores">
-            <p class="sin-datos">Sin goles registrados</p>
-          </div>
+      <div class="stats-col" style="margin-bottom:1rem">
+        <div class="seccion-header">
+          <h3>⚽ Goleadores <span style="font-size:.8rem;font-weight:400;color:var(--c-text-muted)">(Top 10)</span></h3>
+          <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-goleadores')">📷</button>
         </div>
-        <div class="stats-col">
-          <div class="seccion-header">
-            <h3>🟨 Tarjetas</h3>
-            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-tarjetas')">📷</button>
-          </div>
-          <div id="tabla-tarjetas">
-            <p class="sin-datos">Sin tarjetas registradas</p>
-          </div>
+        <div id="tabla-goleadores">
+          <p class="sin-datos">Sin goles registrados</p>
         </div>
       </div>
 

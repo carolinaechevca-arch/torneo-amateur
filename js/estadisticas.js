@@ -181,7 +181,6 @@ function renderizarEstadisticas() {
   _poblarEquiposJugadores();
   poblarSelectorJornadas();
   _renderGoleadores();
-  _renderTarjetas();
   _renderJuegoLimpio();
   _renderVallaMenosVencida();
 }
@@ -205,7 +204,7 @@ function _renderGoleadores() {
     mapa[clave].goles += s.goles;
   });
 
-  const lista = Object.values(mapa).sort((a, b) => b.goles - a.goles);
+  const lista = Object.values(mapa).sort((a, b) => b.goles - a.goles).slice(0, 10);
 
   if (lista.length === 0) {
     cont.innerHTML = '<p class="sin-datos">Sin goles registrados</p>';
@@ -227,6 +226,7 @@ function _renderGoleadores() {
         <thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
+      <p class="tabla-nota">Top 10 goleadores del torneo</p>
     </div>
   `;
 }
