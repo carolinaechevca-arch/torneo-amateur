@@ -32,6 +32,9 @@
      PANTALLA 1: LOGIN — split panel
      ════════════════════════════════════════ -->
 <div id="pantalla-login" class="pantalla">
+  <!-- Botón de tema flotante en el login -->
+  <button id="btn-tema-login" class="btn-tema-flotante" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
+
   <div class="login-split">
 
     <!-- ── Panel izquierdo: imagen de la cancha ── -->
@@ -439,8 +442,11 @@
 
   function _actualizarIconoTema() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const btn = document.getElementById('btn-tema');
-    if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+    const icono = isDark ? '☀️' : '🌙';
+    const btnHeader  = document.getElementById('btn-tema');
+    const btnLogin   = document.getElementById('btn-tema-login');
+    if (btnHeader) btnHeader.textContent = icono;
+    if (btnLogin)  btnLogin.textContent  = icono;
   }
 
   // Sincronizar ícono una vez que el DOM está listo
