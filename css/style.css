@@ -106,32 +106,81 @@ label   { font-weight: 600; }
 #pantalla-setup { height: 100%; overflow-y: auto; }
 
 /* ──────────────────────────────────────────────
-   BOTÓN FLOTANTE DE TEMA (visible en login/setup)
+   SWITCH DE TEMA — estilo pill minimalista
    ────────────────────────────────────────────── */
-.btn-tema-flotante {
+
+/* Contenedor flotante (login / setup) */
+.tema-switch-wrapper {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  top: 1.1rem;
+  right: 1.1rem;
   z-index: 999;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 2px solid var(--c-border-strong);
-  background: var(--c-bg-card);
-  color: var(--c-text-primary);
-  font-size: 1.2rem;
+}
+
+/* Botón = el pill completo */
+.tema-switch {
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
+  display: block;
+}
+
+/* Track: fondo del pill */
+.tema-track {
+  display: flex;
+  align-items: center;
+  width: 76px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--c-bg-card);
+  box-shadow: var(--sombra-m);
+  padding: 4px;
+  transition: background var(--t);
+  position: relative;
+}
+
+[data-theme="dark"] .tema-track {
+  background: var(--c-surface);
+}
+
+/* Thumb: círculo grande que se desliza */
+.tema-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--sombra-m);
-  transition: background var(--t), transform var(--t), box-shadow var(--t);
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  transition: transform .3s cubic-bezier(.4,0,.2,1), background var(--t);
+  position: relative;
+  flex-shrink: 0;
 }
-.btn-tema-flotante:hover {
-  transform: scale(1.1);
-  box-shadow: var(--sombra-l);
-  background: var(--c-surface);
+
+/* En modo oscuro el thumb se desplaza a la derecha */
+[data-theme="dark"] .tema-thumb {
+  transform: translateX(36px); /* 76 - 8padding - 32thumb = 36 */
+  background: var(--c-primary-light);
 }
+
+/* Iconos dentro del thumb */
+.tema-icon-sol,
+.tema-icon-luna {
+  position: absolute;
+  color: var(--c-text-on-dark);
+  font-size: 1rem;
+  transition: opacity .2s;
+}
+
+/* Modo claro: muestra sol, oculta luna */
+.tema-icon-sol  { opacity: 1; }
+.tema-icon-luna { opacity: 0; }
+
+/* Modo oscuro: muestra luna, oculta sol */
+[data-theme="dark"] .tema-icon-sol  { opacity: 0; }
+[data-theme="dark"] .tema-icon-luna { opacity: 1; }
 
 /* ──────────────────────────────────────────────
    UTILIDADES

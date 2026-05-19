@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="css/style.css">
   <!-- Tema: aplicar ANTES de renderizar para evitar flash -->
   <script>
@@ -32,8 +34,17 @@
      PANTALLA 1: LOGIN — split panel
      ════════════════════════════════════════ -->
 <div id="pantalla-login" class="pantalla">
-  <!-- Botón de tema flotante en el login -->
-  <button id="btn-tema-login" class="btn-tema-flotante" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
+  <!-- Switch de tema flotante en el login -->
+  <div class="tema-switch-wrapper">
+    <button class="tema-switch" onclick="toggleTema()" aria-label="Cambiar tema" title="Cambiar tema">
+      <span class="tema-track">
+        <span class="tema-thumb">
+          <i class="bi bi-brightness-high-fill tema-icon-sol"></i>
+          <i class="bi bi-moon-stars-fill tema-icon-luna"></i>
+        </span>
+      </span>
+    </button>
+  </div>
 
   <div class="login-split">
 
@@ -147,7 +158,9 @@
     </div>
     <div class="header-der">
       <span class="usuario-nombre" id="usuario-nombre"></span>
-      <button class="btn-icono" id="btn-tema" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
+      <button class="btn-icono" id="btn-tema" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">
+        <i id="icono-tema" class="bi bi-moon-fill"></i>
+      </button>
       <button class="btn-icono" onclick="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
     </div>
   </header>
@@ -442,11 +455,10 @@
 
   function _actualizarIconoTema() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const icono = isDark ? '☀️' : '🌙';
-    const btnHeader  = document.getElementById('btn-tema');
-    const btnLogin   = document.getElementById('btn-tema-login');
-    if (btnHeader) btnHeader.textContent = icono;
-    if (btnLogin)  btnLogin.textContent  = icono;
+    // Ícono del header: cambia entre sol y luna
+    const iconoEl = document.getElementById('icono-tema');
+    if (iconoEl) iconoEl.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+    // El switch del login se controla solo por CSS con [data-theme="dark"]
   }
 
   // Sincronizar ícono una vez que el DOM está listo
