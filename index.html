@@ -4,9 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Gestiona tu torneo de fútbol amateur de forma fácil y gratuita">
-  <meta name="theme-color" content="#2e7d32">
+  <meta name="theme-color" content="#288024">
   <title>⚽ Torneo Amateur</title>
+  <!-- Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <!-- Tema: aplicar ANTES de renderizar para evitar flash -->
+  <script>
+    (function () {
+      const guardado = localStorage.getItem('tema');
+      const prefereDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (guardado === 'dark' || (!guardado && prefereDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- html2canvas para exportar imágenes -->
@@ -130,6 +144,7 @@
     </div>
     <div class="header-der">
       <span class="usuario-nombre" id="usuario-nombre"></span>
+      <button class="btn-icono" id="btn-tema" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
       <button class="btn-icono" onclick="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
     </div>
   </header>
@@ -409,7 +424,29 @@
 <script src="js/exportar.js"></script>
 
 <script>
-  // Punto de entrada: inicializar auth cuando la librería de Google esté lista
+  /* ── Toggle de tema claro / oscuro ── */
+  function toggleTema() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('tema', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('tema', 'dark');
+    }
+    _actualizarIconoTema();
+  }
+
+  function _actualizarIconoTema() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const btn = document.getElementById('btn-tema');
+    if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+  }
+
+  // Sincronizar ícono una vez que el DOM está listo
+  document.addEventListener('DOMContentLoaded', _actualizarIconoTema);
+
+  /* ── Punto de entrada OAuth ── */
   window.onGoogleLibraryLoad = function () {
     inicializarAuth();
   };
