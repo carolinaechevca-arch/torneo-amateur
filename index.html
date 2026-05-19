@@ -30,21 +30,22 @@
 </head>
 <body>
 
+<!-- Switch de tema — siempre visible en todas las pantallas -->
+<div class="tema-switch-wrapper">
+  <button class="tema-switch" onclick="toggleTema()" aria-label="Cambiar tema" title="Cambiar tema">
+    <span class="tema-track">
+      <span class="tema-thumb">
+        <i class="bi bi-brightness-high-fill tema-icon-sol"></i>
+        <i class="bi bi-moon-stars-fill tema-icon-luna"></i>
+      </span>
+    </span>
+  </button>
+</div>
+
 <!-- ════════════════════════════════════════
      PANTALLA 1: LOGIN — split panel
      ════════════════════════════════════════ -->
 <div id="pantalla-login" class="pantalla">
-  <!-- Switch de tema flotante en el login -->
-  <div class="tema-switch-wrapper">
-    <button class="tema-switch" onclick="toggleTema()" aria-label="Cambiar tema" title="Cambiar tema">
-      <span class="tema-track">
-        <span class="tema-thumb">
-          <i class="bi bi-brightness-high-fill tema-icon-sol"></i>
-          <i class="bi bi-moon-stars-fill tema-icon-luna"></i>
-        </span>
-      </span>
-    </button>
-  </div>
 
   <div class="login-split">
 
@@ -158,9 +159,6 @@
     </div>
     <div class="header-der">
       <span class="usuario-nombre" id="usuario-nombre"></span>
-      <button class="btn-icono" id="btn-tema" onclick="toggleTema()" title="Cambiar tema" aria-label="Cambiar tema">
-        <i id="icono-tema" class="bi bi-moon-fill"></i>
-      </button>
       <button class="btn-icono" onclick="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
     </div>
   </header>

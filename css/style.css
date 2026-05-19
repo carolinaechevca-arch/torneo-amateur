@@ -109,12 +109,12 @@ label   { font-weight: 600; }
    SWITCH DE TEMA — estilo pill minimalista
    ────────────────────────────────────────────── */
 
-/* Contenedor flotante (login / setup) */
+/* Contenedor flotante — siempre visible en todas las pantallas */
 .tema-switch-wrapper {
   position: fixed;
-  top: 1.1rem;
-  right: 1.1rem;
-  z-index: 999;
+  top: .85rem;
+  right: 1rem;
+  z-index: 9997; /* por encima de todo excepto toasts y overlay */
 }
 
 /* Botón = el pill completo */
