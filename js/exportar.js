@@ -2,32 +2,66 @@
    exportar.js – Exportar tablas como imagen o HTML estático
    ============================================= */
 
-/* Descarga una tabla como imagen PNG usando html2canvas */
+/* Mapa de IDs a títulos legibles para el encabezado de la imagen */
+const _TITULOS_EXPORT = {
+  'tabla-posiciones-container': '📊 Tabla de Posiciones',
+  'tabla-goleadores':           '⚽ Goleadores',
+  'tabla-goleadores-wrap':      '⚽ Goleadores',
+  'tabla-tarjetas':             '🟨 Tarjetas',
+  'tabla-tarjetas-wrap':        '🟨 Tarjetas',
+  'tabla-juego-limpio':         '🤝 Ranking Juego Limpio',
+  'tabla-juego-limpio-wrap':    '🤝 Ranking Juego Limpio',
+};
+
+/* Descarga una tabla como imagen PNG usando html2canvas, incluyendo el título */
 async function exportarTabla(elementoId) {
   const el = document.getElementById(elementoId);
-  if (!el) {
-    mostrarError('No se encontró la tabla para exportar.');
-    return;
-  }
-
-  // Verificar que html2canvas esté disponible
+  if (!el) { mostrarError('No se encontró la tabla para exportar.'); return; }
   if (typeof html2canvas === 'undefined') {
     mostrarError('El módulo de exportación no está disponible. Verifica tu conexión a internet.');
     return;
   }
 
+  const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bgColor = isDark ? '#162816' : '#ffffff';
+  const txColor = isDark ? '#E8F5E8' : '#11360E';
+  const titulo  = _TITULOS_EXPORT[elementoId] || '';
+  const fecha   = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Wrapper temporal off-screen con encabezado + tabla clonada
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = [
+    'position:fixed', 'top:-9999px', 'left:-9999px',
+    `background:${bgColor}`, 'padding:20px 24px 24px',
+    'border-radius:12px', 'min-width:340px',
+    "font-family:'Poppins',system-ui,sans-serif"
+  ].join(';');
+
+  wrapper.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px;border-bottom:2px solid #288024;padding-bottom:12px;">
+      <div style="font-size:1.5rem;font-weight:800;color:#288024;letter-spacing:-.5px;">
+        ⚽ ${torneoActual?.nombre || 'Torneo'}
+      </div>
+      ${titulo ? `<div style="font-size:1rem;font-weight:600;color:#56AF57;margin-top:2px;">${titulo}</div>` : ''}
+      <div style="font-size:.72rem;color:#888;margin-top:4px;">${fecha}</div>
+    </div>
+  `;
+
+  wrapper.appendChild(el.cloneNode(true));
+  document.body.appendChild(wrapper);
+
   mostrarCarga('Generando imagen...');
   try {
-    const canvas = await html2canvas(el, {
-      scale:           2,         // mayor resolución
-      backgroundColor: '#ffffff',
+    const canvas = await html2canvas(wrapper, {
+      scale:           2,
+      backgroundColor: bgColor,
       useCORS:         true,
       logging:         false,
     });
 
     const link = document.createElement('a');
-    const nombre = torneoActual?.nombre?.replace(/[^a-zA-Z0-9]/g, '_') || 'torneo';
-    link.download = `${nombre}_${elementoId}_${_fechaHoy()}.png`;
+    const nombreArchivo = torneoActual?.nombre?.replace(/[^a-zA-Z0-9]/g, '_') || 'torneo';
+    link.download = `${nombreArchivo}_${elementoId}_${_fechaHoy()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 
@@ -36,6 +70,7 @@ async function exportarTabla(elementoId) {
     mostrarError('No se pudo generar la imagen: ' + err.message);
     console.error(err);
   } finally {
+    document.body.removeChild(wrapper);
     ocultarCarga();
   }
 }
