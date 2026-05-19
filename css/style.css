@@ -173,7 +173,9 @@ body {
 #pantalla-login {
   display: flex;
   align-items: stretch;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background: var(--c1);
 }
 
@@ -181,7 +183,8 @@ body {
 .login-split {
   display: flex;
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* Panel izquierdo: imagen de la cancha */
@@ -189,7 +192,6 @@ body {
   flex: 1;
   position: relative;
   overflow: hidden;
-  min-height: 260px;
 }
 
 .login-bg-img {
@@ -238,6 +240,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 3rem 2.5rem;
+  overflow-y: auto;
 }
 
 .login-form-inner { width: 100%; }
@@ -284,14 +287,17 @@ body {
   line-height: 1.4;
 }
 
-/* ── Mobile: pantalla completa con imagen arriba ── */
+/* ── Mobile: imagen arriba, formulario abajo ── */
 @media (max-width: 700px) {
-  .login-split { flex-direction: column; }
+  .login-split {
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
 
   .login-imagen-panel {
-    flex: none;
+    flex: 0 0 45dvh;
     height: 45dvh;
-    min-height: 220px;
   }
 
   .login-imagen-overlay {
@@ -301,8 +307,8 @@ body {
     padding: 2rem 1.5rem;
   }
 
-  .login-branding h1  { font-size: 2rem; }
-  .login-branding p   { font-size: 1rem; }
+  .login-branding h1 { font-size: 2rem; }
+  .login-branding p  { font-size: 1rem; }
 
   .login-form-panel {
     width: 100%;
@@ -314,6 +320,7 @@ body {
     position: relative;
     z-index: 1;
     box-shadow: 0 -8px 30px rgba(0,0,0,.15);
+    overflow-y: auto;
   }
 
   .login-titulo { font-size: 1.6rem; }
