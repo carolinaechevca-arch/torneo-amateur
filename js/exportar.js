@@ -158,6 +158,80 @@ function _fechaHoy() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* Descarga el fixture completo como archivo HTML */
+function exportarFixtureHTML() {
+  if (!torneoActual) { mostrarError('No hay torneo activo.'); return; }
+  mostrarCarga('Generando fixture...');
+  try {
+    const nombre = torneoActual.nombre;
+    const fecha  = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
+    const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
+
+    const bloques = jornadas.map(j => {
+      const partidos = fixtureActual.filter(p => p.jornada === j);
+      const filas = partidos.map(p => {
+        if (p.estado === 'descansa') {
+          return `<tr><td colspan="3" style="text-align:left;color:#888">${p.local} — descansa</td><td>–</td></tr>`;
+        }
+        const h = horariosActual.find(h => h.partidoId === p.id) || {};
+        const fechaP = h.fecha ? new Date(h.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+        const horaP  = h.hora || '';
+        const meta   = [fechaP, horaP].filter(Boolean).join(' · ') || '–';
+        const result = p.estado === 'jugado' ? `${p.golesLocal} – ${p.golesVisitante}` : '–';
+        return `<tr><td>${meta}</td><td style="text-align:left">${p.local} vs ${p.visitante}</td><td>${result}</td></tr>`;
+      }).join('');
+      return `<h2>Jornada ${j}</h2><table><thead><tr><th>Fecha / Hora</th><th style="text-align:left">Partido</th><th>Resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fixture – ${nombre}</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',system-ui,sans-serif}
+  body{background:#F0F7F0;color:#11360E;padding:0}
+  .page-header{background:linear-gradient(90deg,#11360E,#1A4117);color:#fff;padding:1.25rem 1.5rem}
+  .page-header h1{font-size:1.25rem;font-weight:800}
+  .page-header .sub{font-size:.76rem;opacity:.7;margin-top:3px}
+  .body{max-width:800px;margin:0 auto;padding:1.25rem}
+  h2{font-size:.95rem;font-weight:800;color:#11360E;margin:1.5rem 0 .6rem;padding-bottom:.35rem;border-bottom:3px solid #288024}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(17,54,14,.1);margin-bottom:.5rem}
+  thead tr{background:#11360E;color:#fff}
+  th{padding:9px 8px;font-size:.78rem;font-weight:700;text-align:center}
+  td{padding:8px;text-align:center;border-bottom:1px solid rgba(86,175,87,.18);font-size:.86rem}
+  tr:last-child td{border-bottom:none}
+  .footer{text-align:center;color:#56AF57;font-size:.75rem;padding:1.5rem 0;font-weight:600}
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>&#127942; ${nombre} — Fixture</h1>
+  <div class="sub">Generado: ${fecha}</div>
+</div>
+<div class="body">
+${bloques}
+</div>
+<p class="footer">Generado con Torneo Amateur App</p>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const link = document.createElement('a');
+    link.download = `${nombre.replace(/[^a-zA-Z0-9]/g, '_')}_fixture_${_fechaHoy()}.html`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    mostrarExito('Fixture descargado');
+  } catch (err) {
+    mostrarError('No se pudo generar el fixture: ' + err.message);
+  } finally {
+    ocultarCarga();
+  }
+}
+
 /* ──────────────────────────────────────────────
    PLANTILLA HTML ESTÁTICO
    ────────────────────────────────────────────── */

@@ -167,10 +167,13 @@
   <!-- Overlay para cerrar sidebar en móvil -->
   <div class="sidebar-overlay oculto" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <!-- Botón hamburguesa (solo visible en móvil) -->
-  <button class="btn-hamburguesa" id="btn-hamburguesa" onclick="toggleSidebar()" aria-label="Abrir menú">
-    <i class="bi bi-list"></i>
-  </button>
+  <!-- Barra superior (solo móvil): hamburguesa + nombre del torneo -->
+  <div class="app-topbar" id="app-topbar">
+    <button class="app-topbar-btn" onclick="toggleSidebar()" aria-label="Abrir menú">
+      <i class="bi bi-list"></i>
+    </button>
+    <span class="app-topbar-nombre" id="topbar-nombre-torneo">Torneo Amateur</span>
+  </div>
 
   <!-- Sidebar de navegación -->
   <nav class="app-sidebar" id="app-sidebar">
@@ -193,6 +196,9 @@
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-resultados" onclick="mostrarSeccion('sec-resultados')" role="tab">
         <i class="bi bi-calendar2-check"></i><span>Resultados</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-fixture" onclick="mostrarSeccion('sec-fixture')" role="tab">
+        <i class="bi bi-table"></i><span>Fixture</span>
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-posiciones" onclick="mostrarSeccion('sec-posiciones')" role="tab">
         <i class="bi bi-bar-chart-fill"></i><span>Posiciones</span>
@@ -493,6 +499,17 @@
           </button>
         </div>
 
+      </div>
+    </section>
+
+    <!-- ══ SECCIÓN: FIXTURE ═════════════════════════ -->
+    <section id="sec-fixture" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2><i class="bi bi-table"></i> Fixture Completo</h2>
+        <button class="btn-secundario btn-pequeño" onclick="exportarFixtureHTML()"><i class="bi bi-download"></i> Descargar</button>
+      </div>
+      <div id="fixture-container">
+        <p class="sin-datos">Cargando fixture...</p>
       </div>
     </section>
 

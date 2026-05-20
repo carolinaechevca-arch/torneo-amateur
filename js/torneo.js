@@ -86,9 +86,11 @@ function cargarDatosApp() {
 
   if (!torneoActual) return;
 
-  // Actualizar encabezado
+  // Actualizar encabezado (sidebar desktop + topbar móvil)
   const el = document.getElementById('header-titulo-torneo');
   if (el) el.textContent = torneoActual.nombre;
+  const tb = document.getElementById('topbar-nombre-torneo');
+  if (tb) tb.textContent = torneoActual.nombre;
 
   // Renderizar cada sección
   renderizarInicio();
@@ -392,11 +394,12 @@ function renderizarInicio() {
       proxEl.innerHTML = partidosJornada.map(p => {
         const horario = horariosActual.find(h => h.partidoId === p.id);
         const fecha = horario?.fecha ? new Date(horario.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+        const hora  = horario?.hora || '';
         if (p.estado === 'descansa') {
           return `
             <div class="proximo-partido proximo-descansa">
               <div class="proximo-jornada">J${p.jornada}</div>
-              <div class="proximo-equipos">😴 <span>${p.local}</span> descansa</div>
+              <div class="proximo-equipos"><i class="bi bi-moon-stars-fill" style="font-size:.9rem"></i> <span>${p.local}</span> descansa</div>
             </div>
           `;
         }
@@ -404,7 +407,7 @@ function renderizarInicio() {
           <div class="proximo-partido ${p.estado === 'jugado' ? 'proximo-jugado' : ''}">
             <div class="proximo-jornada">J${p.jornada}</div>
             <div class="proximo-equipos">${p.local} <span>vs</span> ${p.visitante}</div>
-            ${fecha ? `<div class="proximo-fecha">${fecha}</div>` : ''}
+            ${(fecha || hora) ? `<div class="proximo-fecha">${fecha}${fecha && hora ? ' · ' : ''}${hora}</div>` : ''}
           </div>
         `;
       }).join('');
@@ -437,6 +440,7 @@ function mostrarSeccion(seccionId) {
   if (seccionId === 'sec-posiciones')  renderizarPosiciones();
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
+  if (seccionId === 'sec-fixture')     renderizarFixture();
   if (seccionId === 'sec-jugadores')   { _poblarEquiposJugadores(); renderizarJugadores(); }
 }
 
@@ -683,6 +687,50 @@ function eliminarJugador(id) {
   jugadoresActual = jugadoresActual.filter(j => j.id !== id);
   guardarJugadoresLocal(jugadoresActual);
   renderizarJugadores();
+}
+
+/* ──────────────────────────────────────────────
+   FIXTURE — Vista completa de todos los partidos
+   ────────────────────────────────────────────── */
+
+function renderizarFixture() {
+  const cont = document.getElementById('fixture-container');
+  if (!cont || !torneoActual || !fixtureActual.length) {
+    if (cont) cont.innerHTML = '<p class="sin-datos">Crea un torneo para ver el fixture.</p>';
+    return;
+  }
+
+  const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
+
+  cont.innerHTML = jornadas.map(j => {
+    const partidos = fixtureActual.filter(p => p.jornada === j);
+    const filas = partidos.map(p => {
+      if (p.estado === 'descansa') {
+        return `<div class="fixture-fila fixture-descansa">
+          <div class="fixture-meta">–</div>
+          <div class="fixture-vs"><i class="bi bi-moon-stars-fill"></i> ${p.local} <span class="fixture-descansa-label">descansa</span></div>
+          <div class="fixture-resultado">–</div>
+        </div>`;
+      }
+      const h = horariosActual.find(h => h.partidoId === p.id) || {};
+      const fecha = h.fecha ? new Date(h.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+      const hora  = h.hora || '';
+      const metaTxt = [fecha, hora].filter(Boolean).join(' · ') || '–';
+      const resultado = p.estado === 'jugado'
+        ? `<strong>${p.golesLocal} – ${p.golesVisitante}</strong>`
+        : '<span class="fixture-pendiente-badge">Pendiente</span>';
+      return `<div class="fixture-fila ${p.estado === 'jugado' ? 'fixture-jugado' : ''}">
+        <div class="fixture-meta">${metaTxt}</div>
+        <div class="fixture-vs">${p.local} <span>vs</span> ${p.visitante}</div>
+        <div class="fixture-resultado">${resultado}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="fixture-bloque">
+      <div class="fixture-bloque-header"><i class="bi bi-calendar3"></i> Jornada ${j}</div>
+      ${filas}
+    </div>`;
+  }).join('');
 }
 
 /* Elimina el torneo completo: datos locales + hoja en Google Drive */

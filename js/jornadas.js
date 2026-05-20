@@ -26,19 +26,13 @@ function renderizarCalendario() {
           </div>
           <div class="horario-inputs">
             <div class="horario-campo">
-              <label>📅 Fecha</label>
+              <label><i class="bi bi-calendar3"></i> Fecha</label>
               <input type="date" id="fecha-${p.id}" value="${h.fecha || ''}"
                      class="input-horario">
             </div>
             <div class="horario-campo">
-              <label>🕐 Hora</label>
+              <label><i class="bi bi-clock"></i> Hora</label>
               <input type="time" id="hora-${p.id}" value="${h.hora || ''}"
-                     class="input-horario">
-            </div>
-            <div class="horario-campo horario-cancha">
-              <label>🏟️ Cancha</label>
-              <input type="text" id="cancha-${p.id}" value="${h.cancha || ''}"
-                     placeholder="Nombre de la cancha" maxlength="50"
                      class="input-horario">
             </div>
           </div>
@@ -63,13 +57,11 @@ async function guardarJornadas() {
   const nuevosHorarios = [];
 
   fixtureActual.forEach(p => {
-    const fecha  = document.getElementById(`fecha-${p.id}`)?.value  || '';
-    const hora   = document.getElementById(`hora-${p.id}`)?.value   || '';
-    const cancha = document.getElementById(`cancha-${p.id}`)?.value?.trim() || '';
+    const fecha = document.getElementById(`fecha-${p.id}`)?.value || '';
+    const hora  = document.getElementById(`hora-${p.id}`)?.value  || '';
 
-    // Solo guardar si hay al menos un campo completado
-    if (fecha || hora || cancha) {
-      nuevosHorarios.push({ partidoId: p.id, jornada: p.jornada, fecha, hora, cancha });
+    if (fecha || hora) {
+      nuevosHorarios.push({ partidoId: p.id, jornada: p.jornada, fecha, hora });
     }
   });
 
@@ -99,18 +91,10 @@ async function _sincronizarJornadasSheets() {
   if (!sheetId) return;
 
   const filas = [
-    ['Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora', 'Cancha'],
+    ['Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora'],
     ...horariosActual.map(h => {
       const p = fixtureActual.find(fp => fp.id === h.partidoId);
-      return [
-        h.jornada,
-        h.partidoId,
-        p?.local     || '',
-        p?.visitante || '',
-        h.fecha,
-        h.hora,
-        h.cancha
-      ];
+      return [h.jornada, h.partidoId, p?.local || '', p?.visitante || '', h.fecha, h.hora];
     })
   ];
 

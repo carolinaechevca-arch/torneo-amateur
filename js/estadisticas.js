@@ -128,6 +128,27 @@ async function guardarEstadistica() {
   if (!equipo)                { mostrarError('Selecciona el equipo.'); return; }
   if (!jugador || jugador === '__nuevo__') { mostrarError('Selecciona o agrega un jugador.'); return; }
 
+  // El partido debe estar jugado para registrar estadísticas
+  const partido = fixtureActual.find(p => p.id === partidoId);
+  if (!partido || partido.estado !== 'jugado') {
+    mostrarError('El partido debe tener un resultado guardado antes de registrar estadísticas.');
+    return;
+  }
+
+  // Validar que los goles no superen el resultado del equipo en ese partido
+  if (goles > 0) {
+    const esLocal  = partido.local === equipo;
+    const maxGoles = esLocal ? Number(partido.golesLocal) : Number(partido.golesVisitante);
+    const yaRegistrados = statsActual
+      .filter(s => s.partidoId === partidoId && s.equipo === equipo)
+      .reduce((sum, s) => sum + (Number(s.goles) || 0), 0);
+    if (yaRegistrados + goles > maxGoles) {
+      const restantes = Math.max(0, maxGoles - yaRegistrados);
+      mostrarError(`El equipo anotó ${maxGoles} gol(es) en este partido. Ya hay ${yaRegistrados} registrado(s); solo puedes agregar hasta ${restantes} más.`);
+      return;
+    }
+  }
+
   // Máximo 2 amarillas por partido; 2 amarillas = 1 roja automática
   if (amarillas > 2) amarillas = 2;
   if (amarillas === 2 && rojas === 0) {
