@@ -112,6 +112,19 @@ async function agregarFilas(sheetId, rango, valores) {
   return resp.json();
 }
 
+/* Elimina un archivo de Google Drive (mueve a la papelera) */
+async function eliminarArchivoEnDrive(fileId) {
+  const token = obtenerToken();
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!resp.ok && resp.status !== 204) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'No se pudo eliminar el archivo en Drive');
+  }
+}
+
 /* Escribe múltiples rangos en una sola llamada a la API (batchUpdate).
    `datos` = [{ rango: 'Hoja!A1', valores: [[...]] }, ...] */
 async function escribirLotes(sheetId, datos) {

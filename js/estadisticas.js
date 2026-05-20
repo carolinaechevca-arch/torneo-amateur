@@ -178,8 +178,40 @@ async function guardarEstadistica() {
    ────────────────────────────────────────────── */
 
 function renderizarEstadisticas() {
+  // Guardar selecciones actuales antes de repoblar
+  const jornadaVal = document.getElementById('stat-jornada')?.value;
+  const partidoVal = document.getElementById('stat-partido')?.value;
+  const equipoVal  = document.getElementById('stat-equipo')?.value;
+  const jugadorVal = document.getElementById('stat-jugador-sel')?.value;
+
   _poblarEquiposJugadores();
   poblarSelectorJornadas();
+
+  // Restaurar selecciones y volver a poblar los selectores en cascada
+  const selJornada = document.getElementById('stat-jornada');
+  if (jornadaVal && selJornada) {
+    selJornada.value = jornadaVal;
+    if (selJornada.value === jornadaVal) {
+      onCambioJornada();
+      const selPartido = document.getElementById('stat-partido');
+      if (partidoVal && selPartido) {
+        selPartido.value = partidoVal;
+        if (selPartido.value === partidoVal) {
+          onCambioPartido();
+          const selEquipo = document.getElementById('stat-equipo');
+          if (equipoVal && selEquipo) {
+            selEquipo.value = equipoVal;
+            if (selEquipo.value === equipoVal) {
+              onCambioEquipo();
+              const selJug = document.getElementById('stat-jugador-sel');
+              if (jugadorVal && selJug) selJug.value = jugadorVal;
+            }
+          }
+        }
+      }
+    }
+  }
+
   _renderGoleadores();
   _renderJuegoLimpio();
   _renderVallaMenosVencida();

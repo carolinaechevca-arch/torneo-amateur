@@ -167,65 +167,113 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
   const fecha  = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const filasPos = pos.map((e, i) => {
-    const fondo = i === 0 ? '#1D9E75' : i === 1 ? '#378ADD' : i === 2 ? '#f0ad00' : '';
-    const color = i < 3 ? '#fff' : '';
+    const cls  = i === 0 ? 'pos-1' : i === 1 ? 'pos-2' : i === 2 ? 'pos-3' : '';
     const signo = e.dg > 0 ? '+' : '';
-    return `<tr style="background:${fondo};color:${color}">
-      <td>${i + 1}</td><td>${e.equipo}</td>
+    return `<tr class="${cls}">
+      <td>${i + 1}</td><td class="col-izq">${e.equipo}</td>
       <td>${e.pj}</td><td>${e.pg}</td><td>${e.pe}</td><td>${e.pp}</td>
       <td>${e.gf}</td><td>${e.gc}</td><td>${signo}${e.dg}</td>
       <td><strong>${e.pts}</strong></td>
     </tr>`;
-  }).join('');
+  }).join('') || '<tr><td colspan="10">Sin partidos jugados aún</td></tr>';
 
   const filasGol = goleadores.slice(0, 10).map((j, i) =>
-    `<tr><td>${i + 1}</td><td>${j.jugador}</td><td>${j.equipo}</td><td>${j.goles} ⚽</td></tr>`
-  ).join('') || '<tr><td colspan="4">Sin datos</td></tr>';
+    `<tr><td>${i + 1}</td><td class="col-izq">${j.jugador}</td><td>${j.equipo}</td><td><strong>${j.goles}</strong></td></tr>`
+  ).join('') || '<tr><td colspan="4">Sin goles registrados</td></tr>';
 
   const filasTar = tarjetas.slice(0, 10).map((j, i) =>
-    `<tr><td>${i + 1}</td><td>${j.jugador}</td><td>${j.equipo}</td><td>${j.amarillas} 🟨</td><td>${j.rojas} 🟥</td></tr>`
-  ).join('') || '<tr><td colspan="5">Sin datos</td></tr>';
+    `<tr><td>${i + 1}</td><td class="col-izq">${j.jugador}</td><td>${j.equipo}</td><td>${j.amarillas}</td><td>${j.rojas}</td></tr>`
+  ).join('') || '<tr><td colspan="5">Sin tarjetas registradas</td></tr>';
+
+  const filasValla = [...pos].sort((a, b) => a.gc - b.gc || a.equipo.localeCompare(b.equipo)).map((e, i) =>
+    `<tr ${i === 0 ? 'class="pos-1"' : ''}><td>${i + 1}</td><td class="col-izq">${e.equipo}</td><td>${e.pj}</td><td><strong>${e.gc}</strong></td></tr>`
+  ).join('') || '<tr><td colspan="4">Sin partidos jugados aún</td></tr>';
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>⚽ ${nombre}</title>
+<title>${nombre}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  body{font-family:system-ui,sans-serif;background:#f8f9fa;margin:0;padding:16px;color:#222}
-  h1{color:#1D9E75;text-align:center;margin:0 0 4px}
-  .fecha{text-align:center;color:#888;font-size:.9rem;margin-bottom:24px}
-  h2{color:#378ADD;border-bottom:2px solid #378ADD;padding-bottom:4px;margin-top:32px}
-  table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1);margin-bottom:24px}
-  th{background:#1D9E75;color:#fff;padding:10px 8px;font-size:.85rem;text-align:center}
-  td{padding:8px;text-align:center;border-bottom:1px solid #eee;font-size:.9rem}
-  td:nth-child(2){text-align:left}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',system-ui,sans-serif}
+  body{background:#F0F7F0;color:#11360E;min-height:100vh}
+  .page-header{background:linear-gradient(90deg,#11360E 0%,#1A4117 100%);color:#fff;padding:1.25rem 1.5rem;display:flex;align-items:center;gap:.85rem;box-shadow:0 3px 12px rgba(0,0,0,.35)}
+  .header-icon{font-size:2rem;line-height:1}
+  .header-title{font-size:1.25rem;font-weight:800;margin:0}
+  .header-fecha{font-size:.76rem;opacity:.7;margin-top:2px}
+  .page-body{max-width:900px;margin:0 auto;padding:1.25rem}
+  .sec-titulo{font-size:1.05rem;font-weight:800;color:#11360E;padding:.4rem 0;margin:1.75rem 0 .8rem;border-bottom:3px solid #288024;display:flex;align-items:center;gap:.4rem}
+  .tabla-wrap{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(17,54,14,.1);margin-bottom:1rem;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:360px}
+  thead tr{background:#11360E;color:#fff}
+  th{padding:10px 8px;font-size:.8rem;font-weight:700;text-align:center;white-space:nowrap}
+  td{padding:8px;text-align:center;border-bottom:1px solid rgba(86,175,87,.18);font-size:.88rem}
+  td.col-izq{text-align:left;font-weight:600}
   tr:last-child td{border-bottom:none}
-  .footer{text-align:center;color:#aaa;font-size:.8rem;margin-top:32px}
+  tr.pos-1{background:#1D9E75;color:#fff}
+  tr.pos-2{background:#378ADD;color:#fff}
+  tr.pos-3{background:#D4820A;color:#fff}
+  tr.pos-1 td, tr.pos-2 td, tr.pos-3 td{border-bottom-color:rgba(255,255,255,.2)}
+  .nota{font-size:.76rem;color:#56AF57;padding:.4rem .6rem;text-align:center}
+  .footer{text-align:center;color:#56AF57;font-size:.76rem;padding:2rem 0 1rem;font-weight:600;border-top:1px solid rgba(40,128,36,.2);margin-top:1rem}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
 </style>
 </head>
 <body>
-<h1>⚽ ${nombre}</h1>
-<p class="fecha">Actualizado: ${fecha}</p>
 
-<h2>📊 Tabla de Posiciones</h2>
-<table>
-  <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead>
-  <tbody>${filasPos}</tbody>
-</table>
+<div class="page-header">
+  <div class="header-icon">&#127942;</div>
+  <div>
+    <div class="header-title">${nombre}</div>
+    <div class="header-fecha">Actualizado: ${fecha}</div>
+  </div>
+</div>
 
-<h2>⚽ Goleadores</h2>
-<table>
-  <thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr></thead>
-  <tbody>${filasGol}</tbody>
-</table>
+<div class="page-body">
 
-<h2>🟨 Tarjetas</h2>
-<table>
-  <thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Amarillas</th><th>Rojas</th></tr></thead>
-  <tbody>${filasTar}</tbody>
-</table>
+  <div class="sec-titulo">&#128202; Tabla de Posiciones</div>
+  <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead>
+      <tbody>${filasPos}</tbody>
+    </table>
+  </div>
+
+  <div class="stats-grid">
+    <div>
+      <div class="sec-titulo">&#127942; Goleadores</div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>#</th><th style="text-align:left">Jugador</th><th>Equipo</th><th>Goles</th></tr></thead>
+          <tbody>${filasGol}</tbody>
+        </table>
+        <p class="nota">Top 10 goleadores del torneo</p>
+      </div>
+    </div>
+    <div>
+      <div class="sec-titulo">&#128737; Valla Menos Vencida</div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>GC</th></tr></thead>
+          <tbody>${filasValla}</tbody>
+        </table>
+        <p class="nota">Menor cantidad de goles en contra</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-titulo">&#127968; Tarjetas por Jugador</div>
+  <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>#</th><th style="text-align:left">Jugador</th><th>Equipo</th><th>Amarillas</th><th>Rojas</th></tr></thead>
+      <tbody>${filasTar}</tbody>
+    </table>
+  </div>
+
+</div>
 
 <p class="footer">Generado con Torneo Amateur App</p>
 </body>

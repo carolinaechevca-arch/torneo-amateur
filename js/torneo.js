@@ -437,6 +437,7 @@ function mostrarSeccion(seccionId) {
   if (seccionId === 'sec-posiciones')  renderizarPosiciones();
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
+  if (seccionId === 'sec-jugadores')   { _poblarEquiposJugadores(); renderizarJugadores(); }
 }
 
 /* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */
@@ -511,21 +512,10 @@ function _poblarEquiposJugadores() {
     torneoActual.equipos.map(e => `<option value="${e}">${e}</option>`).join('');
 }
 
-/* Abre / cierra el modal de gestión de jugadores */
+/* Navega a la sección de gestión de jugadores */
 function abrirModalPlantilla() {
-  const modal = document.getElementById('modal-plantilla');
-  if (!modal) return;
-  _poblarEquiposJugadores();
-  modal.classList.remove('oculto');
-  document.addEventListener('keydown', _cerrarModalEsc);
+  mostrarSeccion('sec-jugadores');
 }
-
-function cerrarModalPlantilla() {
-  document.getElementById('modal-plantilla')?.classList.add('oculto');
-  document.removeEventListener('keydown', _cerrarModalEsc);
-}
-
-function _cerrarModalEsc(e) { if (e.key === 'Escape') cerrarModalPlantilla(); }
 
 /* Agrega un jugador al equipo. Devuelve true si tuvo éxito. */
 function agregarJugador(equipo, nombre, cedula, celular, numeroCamisa) {
@@ -612,9 +602,11 @@ function renderizarJugadores() {
       <tr>
         <th title="N° de camisa">#</th>
         <th>Nombre</th>
-        <th title="Goles">⚽</th>
-        <th title="Tarjetas amarillas">🟨</th>
-        <th title="Tarjetas rojas">🟥</th>
+        <th>Cédula</th>
+        <th>Celular</th>
+        <th title="Goles"><i class="bi bi-award-fill"></i></th>
+        <th title="Amarillas"><i class="bi bi-square-fill" style="color:#D4820A"></i></th>
+        <th title="Rojas"><i class="bi bi-square-fill" style="color:#C0392B"></i></th>
         <th></th>
       </tr>
     </thead>
@@ -622,12 +614,14 @@ function renderizarJugadores() {
       <tr id="jrow-${j.id}">
         <td class="col-camisa">${j.numeroCamisa || '–'}</td>
         <td><strong>${j.nombre}</strong></td>
+        <td>${j.cedula || '–'}</td>
+        <td>${j.celular || '–'}</td>
         <td class="col-num">${j.goles}</td>
         <td class="col-num">${j.amarillas}</td>
         <td class="col-num">${j.rojas}</td>
         <td class="col-acciones">
-          <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar">✏️</button>
-          <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar">✕</button>
+          <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar"><i class="bi bi-pencil-fill"></i></button>
+          <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
         </td>
       </tr>`).join('')}
     </tbody>
@@ -642,14 +636,16 @@ function editarJugador(id) {
   const row = document.getElementById(`jrow-${id}`);
   if (!row) return;
   row.innerHTML = `
-    <td><input type="number" id="ec-${id}" value="${j.numeroCamisa||''}" min="1" max="99"  class="input-edit input-edit-xs" placeholder="#"></td>
-    <td><input type="text"   id="en-${id}" value="${j.nombre}"           maxlength="50"    class="input-edit" required></td>
-    <td><input type="number" id="eg-${id}" value="${st.goles}"     min="0" max="999"        class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="ea-${id}" value="${st.amarillas}" min="0" max="999"        class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="er-${id}" value="${st.rojas}"     min="0" max="999"        class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="ec-${id}"   value="${j.numeroCamisa||''}" min="1" max="99"  class="input-edit input-edit-xs" placeholder="#"></td>
+    <td><input type="text"   id="en-${id}"   value="${j.nombre}"           maxlength="50"    class="input-edit" required></td>
+    <td><input type="text"   id="eced-${id}" value="${j.cedula||''}"       maxlength="20"    class="input-edit"></td>
+    <td><input type="tel"    id="ecel-${id}" value="${j.celular||''}"      maxlength="15"    class="input-edit"></td>
+    <td><input type="number" id="eg-${id}"   value="${st.goles}"     min="0" max="999"       class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="ea-${id}"   value="${st.amarillas}" min="0" max="999"       class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="er-${id}"   value="${st.rojas}"     min="0" max="999"       class="input-edit input-edit-xs"></td>
     <td class="col-acciones">
-      <button class="btn-principal  btn-xs" onclick="guardarEdicionJugador('${id}')">✓</button>
-      <button class="btn-secundario btn-xs" onclick="renderizarJugadores()">✕</button>
+      <button class="btn-principal  btn-xs" onclick="guardarEdicionJugador('${id}')"><i class="bi bi-check-lg"></i></button>
+      <button class="btn-secundario btn-xs" onclick="renderizarJugadores()"><i class="bi bi-x-lg"></i></button>
     </td>`;
   document.getElementById(`en-${id}`)?.focus();
 }
@@ -669,7 +665,9 @@ function guardarEdicionJugador(id) {
   jugadoresActual[idx] = {
     ...j,
     nombre,
-    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim() || ''
+    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim()   || '',
+    cedula:       document.getElementById(`eced-${id}`)?.value?.trim() || '',
+    celular:      document.getElementById(`ecel-${id}`)?.value?.trim() || ''
   };
   guardarJugadoresLocal(jugadoresActual);
 
@@ -685,4 +683,26 @@ function eliminarJugador(id) {
   jugadoresActual = jugadoresActual.filter(j => j.id !== id);
   guardarJugadoresLocal(jugadoresActual);
   renderizarJugadores();
+}
+
+/* Elimina el torneo completo: datos locales + hoja en Google Drive */
+async function eliminarTorneoCompleto() {
+  const nombre = torneoActual?.nombre || 'este torneo';
+  if (!confirm(`¿Eliminar "${nombre}"?\n\nSe borrarán todos los datos locales y se eliminará la hoja de cálculo de Google Drive.\n\nEsta acción NO se puede deshacer.`)) return;
+  if (!confirm('Segunda confirmación: ¿estás seguro de que quieres eliminar el torneo permanentemente?')) return;
+
+  const sheetId = torneoActual?.sheetId;
+  mostrarCarga('Eliminando torneo...');
+  try {
+    if (sheetId) {
+      await eliminarArchivoEnDrive(sheetId);
+    }
+    borrarTorneoLocal();
+    mostrarExito('Torneo eliminado correctamente');
+    setTimeout(() => { mostrarPantalla('setup'); actualizarCamposEquipos(); }, 1200);
+  } catch (err) {
+    mostrarError('No se pudo eliminar de Drive: ' + err.message);
+  } finally {
+    ocultarCarga();
+  }
 }

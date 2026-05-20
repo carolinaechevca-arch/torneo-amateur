@@ -1198,15 +1198,20 @@ label   { font-weight: 600; }
   border-top: 4px solid var(--c-primary);
   transition: background var(--t);
 }
-.export-icon { font-size: 3rem; margin-bottom: 1rem; }
+.export-icon { font-size: 3rem; margin-bottom: 1rem; color: var(--c-primary); }
+.export-icon-peligro { color: var(--c-danger); }
 .export-card h3 { color: var(--c-text-primary); margin-bottom: .5rem; font-weight: 700; }
 .export-card p  { color: var(--c-text-secondary); font-size: .88rem; margin-bottom: 1.5rem; font-weight: 400; }
+.export-card-peligro { border-top-color: var(--c-danger); }
 
 .export-opciones {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: .5rem;
 }
+
+/* Iconos Bootstrap inline en títulos */
+h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 
 /* ──────────────────────────────────────────────
    TOAST – Mensajes de notificación

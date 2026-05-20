@@ -206,7 +206,7 @@
       <li><button class="sidebar-item" data-seccion="sec-exportar" onclick="mostrarSeccion('sec-exportar')" role="tab">
         <i class="bi bi-upload"></i><span>Exportar</span>
       </button></li>
-      <li><button class="sidebar-item" onclick="abrirModalPlantilla()">
+      <li><button class="sidebar-item" data-seccion="sec-jugadores" onclick="mostrarSeccion('sec-jugadores')">
         <i class="bi bi-people-fill"></i><span>Jugadores</span>
       </button></li>
     </ul>
@@ -230,7 +230,7 @@
     <!-- ══ SECCIÓN: INICIO ══════════════════════════ -->
     <section id="sec-inicio" class="seccion" role="tabpanel">
       <div class="seccion-header">
-        <h2>🏆 Resumen del Torneo</h2>
+        <h2><i class="bi bi-trophy-fill"></i> Resumen del Torneo</h2>
         <button class="btn-secundario btn-pequeño" onclick="iniciarNuevoTorneo()">+ Nuevo Torneo</button>
       </div>
 
@@ -257,13 +257,13 @@
       <!-- Top 3 y próximos partidos -->
       <div class="inicio-grid">
         <div class="inicio-col">
-          <h3>🥇 Top 3 Posiciones</h3>
+          <h3><i class="bi bi-award-fill"></i> Top 3 Posiciones</h3>
           <div id="inicio-top3">
             <p class="sin-datos">Aún no hay partidos jugados</p>
           </div>
         </div>
         <div class="inicio-col">
-          <h3>📅 Próximos Partidos</h3>
+          <h3><i class="bi bi-calendar3"></i> Próximos Partidos</h3>
           <div id="inicio-proximos">
             <p class="sin-datos">Sin partidos programados</p>
           </div>
@@ -272,9 +272,9 @@
 
       <!-- Link a Google Sheets -->
       <div class="inicio-col" style="margin-top:1rem;">
-        <h3>🔗 Tu Hoja de Cálculo en Drive</h3>
+        <h3><i class="bi bi-link-45deg"></i> Tu Hoja de Cálculo en Drive</h3>
         <a id="link-sheet" href="#" target="_blank" rel="noopener noreferrer" class="btn-sheet oculto">
-          📊 Abrir en Google Sheets
+          <i class="bi bi-table"></i> Abrir en Google Sheets
         </a>
         <p id="link-sheet-info" class="sin-datos">Crea un torneo para ver el link</p>
       </div>
@@ -283,11 +283,11 @@
     <!-- ══ SECCIÓN: RESULTADOS ══════════════════════ -->
     <section id="sec-resultados" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
-        <h2>⚽ Resultados</h2>
+        <h2><i class="bi bi-calendar2-check"></i> Resultados</h2>
         <div class="jornada-nav">
-          <button class="btn-icono" onclick="jornadaAnterior()" title="Jornada anterior" aria-label="Jornada anterior">◀</button>
+          <button class="btn-icono" onclick="jornadaAnterior()" title="Jornada anterior" aria-label="Jornada anterior"><i class="bi bi-chevron-left"></i></button>
           <span id="jornada-actual-label" style="min-width:120px;text-align:center;">Jornada 1</span>
-          <button class="btn-icono" onclick="jornadaSiguiente()" title="Jornada siguiente" aria-label="Jornada siguiente">▶</button>
+          <button class="btn-icono" onclick="jornadaSiguiente()" title="Jornada siguiente" aria-label="Jornada siguiente"><i class="bi bi-chevron-right"></i></button>
         </div>
       </div>
 
@@ -297,13 +297,13 @@
 
       <div id="btn-guardar-resultados-container" class="oculto">
         <button class="btn-principal btn-grande" onclick="guardarResultados()">
-          💾 Guardar Resultados
+          <i class="bi bi-floppy-fill"></i> Guardar Resultados
         </button>
       </div>
 
       <!-- Historial de cambios en resultados -->
       <details class="historial-section">
-        <summary>📋 Historial de cambios</summary>
+        <summary><i class="bi bi-clock-history"></i> Historial de cambios</summary>
         <div id="historial-resultados" class="historial-container">
           <p class="sin-datos">No hay cambios registrados aún.</p>
         </div>
@@ -313,8 +313,8 @@
     <!-- ══ SECCIÓN: POSICIONES ══════════════════════ -->
     <section id="sec-posiciones" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
-        <h2>📊 Tabla de Posiciones</h2>
-        <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-posiciones-container')">📷 Imagen</button>
+        <h2><i class="bi bi-bar-chart-fill"></i> Tabla de Posiciones</h2>
+        <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-posiciones-container')"><i class="bi bi-camera-fill"></i> Imagen</button>
       </div>
       <div id="tabla-posiciones-container">
         <p class="sin-datos">Aún no hay resultados para calcular posiciones.</p>
@@ -324,13 +324,7 @@
     <!-- ══ SECCIÓN: ESTADÍSTICAS ════════════════════ -->
     <section id="sec-estadisticas" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
-        <h2>📈 Estadísticas de Jugadores</h2>
-      </div>
-
-      <!-- Acceso rápido a la plantilla -->
-      <div class="plantilla-acceso">
-        <span>👥 Registra jugadores por equipo para asignarlos a estadísticas</span>
-        <button class="btn-secundario btn-pequeño" onclick="abrirModalPlantilla()">Gestionar plantilla →</button>
+        <h2><i class="bi bi-graph-up-arrow"></i> Estadísticas de Jugadores</h2>
       </div>
 
       <!-- Formulario para registrar una estadística -->
@@ -339,13 +333,13 @@
 
         <div class="form-fila">
           <div class="form-grupo">
-            <label for="stat-jornada">📅 Jornada</label>
+            <label for="stat-jornada"><i class="bi bi-calendar3"></i> Jornada</label>
             <select id="stat-jornada" onchange="onCambioJornada()">
               <option value="">Seleccionar...</option>
             </select>
           </div>
           <div class="form-grupo">
-            <label for="stat-partido">⚽ Partido</label>
+            <label for="stat-partido">Partido</label>
             <select id="stat-partido" onchange="onCambioPartido()">
               <option value="">Seleccionar jornada primero</option>
             </select>
@@ -354,13 +348,13 @@
 
         <div class="form-fila">
           <div class="form-grupo">
-            <label for="stat-equipo">🏟️ Equipo</label>
+            <label for="stat-equipo"><i class="bi bi-shield-fill"></i> Equipo</label>
             <select id="stat-equipo" onchange="onCambioEquipo()">
               <option value="">Seleccionar partido primero</option>
             </select>
           </div>
           <div class="form-grupo">
-            <label for="stat-jugador-sel">👤 Jugador</label>
+            <label for="stat-jugador-sel"><i class="bi bi-person-fill"></i> Jugador</label>
             <select id="stat-jugador-sel" onchange="onCambioJugadorSel()">
               <option value="">Seleccionar equipo primero</option>
             </select>
@@ -384,32 +378,32 @@
               <input type="tel" id="inline-jugador-celular" placeholder="Opcional" maxlength="15">
             </div>
           </div>
-          <button class="btn-secundario btn-pequeño" onclick="agregarJugadorDesdeStats()">✅ Agregar y seleccionar</button>
+          <button class="btn-secundario btn-pequeño" onclick="agregarJugadorDesdeStats()"><i class="bi bi-check-circle-fill"></i> Agregar y seleccionar</button>
         </div>
 
         <div class="form-fila">
           <div class="form-grupo">
-            <label for="stat-goles">⚽ Goles</label>
+            <label for="stat-goles">Goles</label>
             <input type="number" id="stat-goles" min="0" max="20" value="0">
           </div>
           <div class="form-grupo">
-            <label for="stat-amarillas">🟨 Amarillas</label>
+            <label for="stat-amarillas"><i class="bi bi-square-fill" style="color:#D4820A"></i> Amarillas</label>
             <input type="number" id="stat-amarillas" min="0" max="2" value="0">
           </div>
           <div class="form-grupo">
-            <label for="stat-rojas">🟥 Rojas</label>
+            <label for="stat-rojas"><i class="bi bi-square-fill" style="color:#C0392B"></i> Rojas</label>
             <input type="number" id="stat-rojas" min="0" max="1" value="0">
           </div>
         </div>
 
-        <button class="btn-principal" onclick="guardarEstadistica()">💾 Guardar Estadística</button>
+        <button class="btn-principal" onclick="guardarEstadistica()"><i class="bi bi-floppy-fill"></i> Guardar Estadística</button>
       </div>
 
       <!-- Tablas de estadísticas -->
       <div class="stats-col" style="margin-bottom:1rem">
         <div class="seccion-header">
-          <h3>⚽ Goleadores <span style="font-size:.8rem;font-weight:400;color:var(--c-text-muted)">(Top 10)</span></h3>
-          <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-goleadores')">📷</button>
+          <h3><i class="bi bi-award-fill"></i> Goleadores <span style="font-size:.8rem;font-weight:400;color:var(--c-text-muted)">(Top 10)</span></h3>
+          <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-goleadores')" title="Exportar imagen"><i class="bi bi-camera-fill"></i></button>
         </div>
         <div id="tabla-goleadores">
           <p class="sin-datos">Sin goles registrados</p>
@@ -419,8 +413,8 @@
       <div class="stats-tablas" style="margin-top:1rem;">
         <div class="stats-col">
           <div class="seccion-header">
-            <h3>🤝 Juego Limpio</h3>
-            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-juego-limpio')">📷</button>
+            <h3><i class="bi bi-shield-check"></i> Juego Limpio</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-juego-limpio')" title="Exportar imagen"><i class="bi bi-camera-fill"></i></button>
           </div>
           <div id="tabla-juego-limpio">
             <p class="sin-datos">Sin datos de disciplina aún</p>
@@ -428,8 +422,8 @@
         </div>
         <div class="stats-col">
           <div class="seccion-header">
-            <h3>🥅 Valla Menos Vencida</h3>
-            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-valla')">📷</button>
+            <h3><i class="bi bi-shield-fill"></i> Valla Menos Vencida</h3>
+            <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-valla')" title="Exportar imagen"><i class="bi bi-camera-fill"></i></button>
           </div>
           <div id="tabla-valla">
             <p class="sin-datos">Sin partidos jugados aún</p>
@@ -441,8 +435,8 @@
     <!-- ══ SECCIÓN: JORNADAS ════════════════════════ -->
     <section id="sec-jornadas" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
-        <h2>📅 Calendario de Partidos</h2>
-        <button class="btn-principal btn-pequeño" onclick="guardarJornadas()">💾 Guardar Fechas</button>
+        <h2><i class="bi bi-calendar3"></i> Calendario de Partidos</h2>
+        <button class="btn-principal btn-pequeño" onclick="guardarJornadas()"><i class="bi bi-floppy-fill"></i> Guardar Fechas</button>
       </div>
       <p class="info-texto">Asigna fecha, hora y cancha a cada partido. Luego presiona "Guardar Fechas".</p>
       <div id="calendario-jornadas">
@@ -453,95 +447,98 @@
     <!-- ══ SECCIÓN: EXPORTAR ════════════════════════ -->
     <section id="sec-exportar" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
-        <h2>📤 Exportar y Compartir</h2>
+        <h2><i class="bi bi-upload"></i> Exportar y Compartir</h2>
       </div>
 
       <div class="export-grid">
 
         <!-- Card: Exportar como imagen -->
         <div class="export-card">
-          <div class="export-icon">📸</div>
+          <div class="export-icon"><i class="bi bi-camera-fill"></i></div>
           <h3>Descargar como Imagen</h3>
           <p>Guarda cualquier tabla como imagen PNG para compartir por WhatsApp o redes sociales.</p>
           <div class="export-opciones">
             <button class="btn-secundario" onclick="exportarTabla('tabla-posiciones-container')">
-              📊 Posiciones
+              <i class="bi bi-bar-chart-fill"></i> Posiciones
             </button>
             <button class="btn-secundario" onclick="exportarTabla('tabla-goleadores')">
-              ⚽ Goleadores
-            </button>
-            <button class="btn-secundario" onclick="exportarTabla('tabla-tarjetas')">
-              🟨 Tarjetas
+              <i class="bi bi-award-fill"></i> Goleadores
             </button>
             <button class="btn-secundario" onclick="exportarTabla('tabla-juego-limpio')">
-              🤝 Juego Limpio
+              <i class="bi bi-shield-check"></i> Juego Limpio
+            </button>
+            <button class="btn-secundario" onclick="exportarTabla('tabla-valla')">
+              <i class="bi bi-shield-fill"></i> Valla
             </button>
           </div>
         </div>
 
         <!-- Card: HTML estático -->
         <div class="export-card">
-          <div class="export-icon">🌐</div>
+          <div class="export-icon"><i class="bi bi-globe"></i></div>
           <h3>Página Web para Compartir</h3>
           <p>Genera un archivo HTML con toda la información del torneo. Puedes enviarlo por WhatsApp y cualquiera puede abrirlo sin instalar nada.</p>
           <button class="btn-principal" onclick="generarHTMLEstatico()" style="width:100%">
-            ⬇️ Descargar Página Web
+            <i class="bi bi-download"></i> Descargar Página Web
+          </button>
+        </div>
+
+        <!-- Card: Eliminar torneo -->
+        <div class="export-card export-card-peligro">
+          <div class="export-icon export-icon-peligro"><i class="bi bi-trash3-fill"></i></div>
+          <h3>Eliminar Torneo</h3>
+          <p>Borra todos los datos locales y elimina la hoja de cálculo de Google Drive. Esta acción no se puede deshacer.</p>
+          <button class="btn-peligro" onclick="eliminarTorneoCompleto()" style="width:100%">
+            <i class="bi bi-trash3-fill"></i> Eliminar Torneo
           </button>
         </div>
 
       </div>
     </section>
 
+    <!-- ══ SECCIÓN: JUGADORES ════════════════════════ -->
+    <section id="sec-jugadores" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2><i class="bi bi-people-fill"></i> Gestión de Jugadores</h2>
+      </div>
+
+      <div class="form-grupo" style="max-width:320px;margin-bottom:1.25rem">
+        <label for="gestion-equipo">Equipo</label>
+        <select id="gestion-equipo" onchange="renderizarJugadores()">
+          <option value="">Seleccionar equipo...</option>
+        </select>
+      </div>
+
+      <div id="lista-jugadores">
+        <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
+      </div>
+
+      <div id="form-agregar-jugador" class="oculto" style="margin-top:1.5rem">
+        <h3 style="font-size:.95rem;margin-bottom:.75rem;font-weight:700"><i class="bi bi-person-plus-fill"></i> Agregar jugador</h3>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="nuevo-jugador-nombre">Nombre *</label>
+            <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
+          </div>
+          <div class="form-grupo" style="max-width:100px">
+            <label for="nuevo-jugador-camisa"># Camisa</label>
+            <input type="number" id="nuevo-jugador-camisa" placeholder="Ej: 10" min="1" max="99">
+          </div>
+          <div class="form-grupo">
+            <label for="nuevo-jugador-cedula">Cédula</label>
+            <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
+          </div>
+          <div class="form-grupo">
+            <label for="nuevo-jugador-celular">Celular</label>
+            <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
+          </div>
+        </div>
+        <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()"><i class="bi bi-person-plus-fill"></i> Agregar jugador</button>
+      </div>
+    </section>
+
   </main>
 
-  <!-- ══ MODAL: GESTIÓN DE JUGADORES ══════════ -->
-  <div id="modal-plantilla" class="modal-overlay oculto" role="dialog" aria-modal="true"
-       aria-labelledby="modal-plantilla-titulo" onclick="if(event.target===this)cerrarModalPlantilla()">
-    <div class="modal-panel">
-
-      <div class="modal-header">
-        <h2 id="modal-plantilla-titulo">👥 Gestión de Jugadores</h2>
-        <button class="modal-cerrar" onclick="cerrarModalPlantilla()" aria-label="Cerrar">✕</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="form-grupo" style="max-width:320px;margin-bottom:1.25rem">
-          <label for="gestion-equipo">Equipo</label>
-          <select id="gestion-equipo" onchange="renderizarJugadores()">
-            <option value="">Seleccionar equipo...</option>
-          </select>
-        </div>
-
-        <div id="lista-jugadores">
-          <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
-        </div>
-
-        <div id="form-agregar-jugador" class="oculto" style="margin-top:1.5rem">
-          <h3 style="font-size:.95rem;margin-bottom:.75rem;font-weight:700">➕ Agregar jugador</h3>
-          <div class="form-fila">
-            <div class="form-grupo">
-              <label for="nuevo-jugador-nombre">Nombre *</label>
-              <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
-            </div>
-            <div class="form-grupo" style="max-width:100px">
-              <label for="nuevo-jugador-camisa"># Camisa</label>
-              <input type="number" id="nuevo-jugador-camisa" placeholder="Ej: 10" min="1" max="99">
-            </div>
-            <div class="form-grupo">
-              <label for="nuevo-jugador-cedula">Cédula</label>
-              <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
-            </div>
-            <div class="form-grupo">
-              <label for="nuevo-jugador-celular">Celular</label>
-              <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
-            </div>
-          </div>
-          <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()">➕ Agregar jugador</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
 
 </div>
 <!-- FIN pantalla-app -->
