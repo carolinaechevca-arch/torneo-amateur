@@ -237,7 +237,6 @@
     <section id="sec-inicio" class="seccion" role="tabpanel">
       <div class="seccion-header">
         <h2><i class="bi bi-trophy-fill"></i> Resumen del Torneo</h2>
-        <button class="btn-secundario btn-pequeño" onclick="iniciarNuevoTorneo()">+ Nuevo Torneo</button>
       </div>
 
       <!-- Tarjetas de estadísticas rápidas -->
@@ -269,7 +268,12 @@
           </div>
         </div>
         <div class="inicio-col">
-          <h3><i class="bi bi-calendar3"></i> Próximos Partidos</h3>
+          <h3 style="display:flex;align-items:center;justify-content:space-between;">
+            <span><i class="bi bi-calendar3"></i> Próximos Partidos</span>
+            <button class="btn-icon-sm" onclick="exportarTabla('inicio-proximos')" title="Exportar como imagen">
+              <i class="bi bi-camera"></i>
+            </button>
+          </h3>
           <div id="inicio-proximos">
             <p class="sin-datos">Sin partidos programados</p>
           </div>
@@ -479,13 +483,13 @@
           </div>
         </div>
 
-        <!-- Card: HTML estático -->
+        <!-- Card: 4 imágenes -->
         <div class="export-card">
-          <div class="export-icon"><i class="bi bi-globe"></i></div>
-          <h3>Página Web para Compartir</h3>
-          <p>Genera un archivo HTML con toda la información del torneo. Puedes enviarlo por WhatsApp y cualquiera puede abrirlo sin instalar nada.</p>
-          <button class="btn-principal" onclick="generarHTMLEstatico()" style="width:100%">
-            <i class="bi bi-download"></i> Descargar Página Web
+          <div class="export-icon"><i class="bi bi-images"></i></div>
+          <h3>Descargar 4 Imágenes</h3>
+          <p>Descarga posiciones, goleadores, juego limpio y valla menos vencida como imágenes PNG listas para compartir por WhatsApp.</p>
+          <button class="btn-principal" onclick="generarCuatroImagenes()" style="width:100%">
+            <i class="bi bi-download"></i> Descargar las 4 Imágenes
           </button>
         </div>
 

@@ -131,10 +131,3 @@ function mostrarPantalla(cual) {
   }
 }
 
-/* Inicia el proceso para crear un nuevo torneo */
-function iniciarNuevoTorneo() {
-  if (!confirm('¿Crear un nuevo torneo? Los datos del torneo actual se reemplazarán en este dispositivo.')) return;
-  borrarTorneoLocal();
-  mostrarPantalla('setup');
-  actualizarCamposEquipos();
-}

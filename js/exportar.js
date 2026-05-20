@@ -13,6 +13,7 @@ const _TITULOS_EXPORT = {
   'tabla-juego-limpio-wrap':    '🤝 Juego Limpio',
   'tabla-valla':                '🥅 Valla Menos Vencida',
   'tabla-valla-wrap':           '🥅 Valla Menos Vencida',
+  'inicio-proximos':            'Próximos Partidos',
 };
 
 /* Descarga una tabla como imagen PNG usando html2canvas, incluyendo el título */
@@ -77,35 +78,108 @@ async function exportarTabla(elementoId) {
   }
 }
 
-/* Genera un archivo HTML estático con toda la información del torneo
-   para compartir fácilmente por WhatsApp o correo */
-function generarHTMLEstatico() {
-  if (!torneoActual) {
-    mostrarError('No hay torneo activo para exportar.');
+/* Descarga las 4 tablas principales como imágenes PNG independientes */
+async function generarCuatroImagenes() {
+  if (!torneoActual) { mostrarError('No hay torneo activo para exportar.'); return; }
+  if (typeof html2canvas === 'undefined') {
+    mostrarError('El módulo de exportación no está disponible. Verifica tu conexión a internet.');
     return;
   }
 
-  mostrarCarga('Generando página web...');
+  const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bgColor = isDark ? '#162816' : '#ffffff';
+  const nombre  = torneoActual.nombre;
+  const fecha   = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  const pos       = calcularClasificacion();
+  const goleadores = _calcularGoleadoresList();
+  const jl        = _calcularJuegoLimpioList();
+  const valla     = [...pos].sort((a, b) => a.gc - b.gc || a.equipo.localeCompare(b.equipo));
+
+  // Estilos inline para las tablas (independiente del CSS de la app)
+  const S = {
+    wrap:  'background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(17,54,14,.1);overflow-x:auto;',
+    tbl:   'width:100%;border-collapse:collapse;min-width:320px;font-family:Poppins,system-ui,sans-serif;',
+    thead: 'background:#11360E;color:#fff;',
+    th:    'padding:9px 8px;font-size:.8rem;font-weight:700;text-align:center;white-space:nowrap;',
+    thL:   'padding:9px 8px;font-size:.8rem;font-weight:700;text-align:left;white-space:nowrap;',
+    td:    'padding:8px;text-align:center;border-bottom:1px solid rgba(86,175,87,.18);font-size:.86rem;',
+    tdL:   'padding:8px;text-align:left;font-weight:600;border-bottom:1px solid rgba(86,175,87,.18);font-size:.86rem;',
+  };
+
+  const _th  = t => `<th style="${S.th}">${t}</th>`;
+  const _thL = t => `<th style="${S.thL}">${t}</th>`;
+  const _td  = t => `<td style="${S.td}">${t}</td>`;
+  const _tdL = t => `<td style="${S.tdL}">${t}</td>`;
+
+  // ── Filas de cada tabla ──────────────────────────────────────
+  const filasPos = pos.map((e, i) => {
+    const sg = e.dg > 0 ? '+' : '';
+    return `<tr>${_td(i+1)}${_tdL(e.equipo)}${_td(e.pj)}${_td(e.pg)}${_td(e.pe)}${_td(e.pp)}${_td(e.gf)}${_td(e.gc)}${_td(sg+e.dg)}<td style="${S.td}"><strong>${e.pts}</strong></td></tr>`;
+  }).join('') || `<tr><td colspan="10" style="${S.td}">Sin partidos jugados</td></tr>`;
+
+  const filasGol = goleadores.slice(0, 10).map((j, i) =>
+    `<tr>${_td(i+1)}${_tdL(j.jugador)}${_td(j.equipo)}<td style="${S.td}"><strong>${j.goles}</strong></td></tr>`
+  ).join('') || `<tr><td colspan="4" style="${S.td}">Sin goles registrados</td></tr>`;
+
+  const filasJL = jl.map((e, i) =>
+    `<tr>${_td(i+1)}${_tdL(e.equipo)}${_td(e.amarillas)}${_td(e.rojas)}<td style="${S.td}"><strong>${e.puntos}</strong></td></tr>`
+  ).join('') || `<tr><td colspan="5" style="${S.td}">Sin tarjetas registradas</td></tr>`;
+
+  const filasValla = valla.map((e, i) =>
+    `<tr>${_td(i+1)}${_tdL(e.equipo)}${_td(e.pj)}<td style="${S.td}"><strong>${e.gc}</strong></td></tr>`
+  ).join('') || `<tr><td colspan="4" style="${S.td}">Sin partidos jugados</td></tr>`;
+
+  const secciones = [
+    {
+      titulo: 'Tabla de Posiciones', archivo: 'posiciones',
+      tabla: `<table style="${S.tbl}"><thead><tr style="${S.thead}">${_th('#')}${_thL('Equipo')}${_th('PJ')}${_th('PG')}${_th('PE')}${_th('PP')}${_th('GF')}${_th('GC')}${_th('DG')}${_th('Pts')}</tr></thead><tbody>${filasPos}</tbody></table>`,
+    },
+    {
+      titulo: 'Top 10 Goleadores', archivo: 'goleadores',
+      tabla: `<table style="${S.tbl}"><thead><tr style="${S.thead}">${_th('#')}${_thL('Jugador')}${_th('Equipo')}${_th('Goles')}</tr></thead><tbody>${filasGol}</tbody></table>`,
+    },
+    {
+      titulo: 'Juego Limpio por Equipo', archivo: 'juego_limpio',
+      tabla: `<table style="${S.tbl}"><thead><tr style="${S.thead}">${_th('#')}${_thL('Equipo')}${_th('Amarillas')}${_th('Rojas')}${_th('Pts')}</tr></thead><tbody>${filasJL}</tbody></table>`,
+    },
+    {
+      titulo: 'Valla Menos Vencida', archivo: 'valla',
+      tabla: `<table style="${S.tbl}"><thead><tr style="${S.thead}">${_th('#')}${_thL('Equipo')}${_th('PJ')}${_th('GC')}</tr></thead><tbody>${filasValla}</tbody></table>`,
+    },
+  ];
+
+  mostrarCarga('Generando 4 imágenes...');
   try {
-    const pos       = calcularClasificacion();
-    const goleadores = _calcularGoleadoresList();
-    const tarjetas   = _calcularTarjetasList();
-    const juegoLimpio = _calcularJuegoLimpioList();
-
-    const html = _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio);
-
-    const blob  = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const link  = document.createElement('a');
-    const nombre = torneoActual.nombre.replace(/[^a-zA-Z0-9]/g, '_');
-    link.download = `${nombre}_${_fechaHoy()}.html`;
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    URL.revokeObjectURL(link.href);
-
-    mostrarExito('✅ Página web descargada. ¡Envíala por WhatsApp!');
+    const nombreArchivo = nombre.replace(/[^a-zA-Z0-9]/g, '_');
+    for (const sec of secciones) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = [
+        'position:fixed', 'top:-9999px', 'left:-9999px',
+        `background:${bgColor}`, 'padding:20px 24px 24px',
+        'border-radius:12px', 'min-width:360px',
+        "font-family:'Poppins',system-ui,sans-serif",
+      ].join(';');
+      wrapper.innerHTML = `
+        <div style="text-align:center;margin-bottom:14px;border-bottom:2px solid #288024;padding-bottom:12px;">
+          <div style="font-size:1.3rem;font-weight:800;color:#288024;">${nombre}</div>
+          <div style="font-size:.95rem;font-weight:600;color:#56AF57;margin-top:2px;">${sec.titulo}</div>
+          <div style="font-size:.72rem;color:#888;margin-top:4px;">${fecha}</div>
+        </div>
+        <div style="${S.wrap}">${sec.tabla}</div>
+      `;
+      document.body.appendChild(wrapper);
+      const canvas = await html2canvas(wrapper, { scale: 2, backgroundColor: bgColor, useCORS: true, logging: false });
+      const link = document.createElement('a');
+      link.download = `${nombreArchivo}_${sec.archivo}_${_fechaHoy()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      document.body.removeChild(wrapper);
+      await new Promise(r => setTimeout(r, 400));
+    }
+    mostrarExito('✅ 4 imágenes descargadas correctamente');
   } catch (err) {
-    mostrarError('No se pudo generar la página: ' + err.message);
+    mostrarError('No se pudo generar las imágenes: ' + err.message);
     console.error(err);
   } finally {
     ocultarCarga();
@@ -142,16 +216,16 @@ function _calcularTarjetasList() {
 function _calcularJuegoLimpioList() {
   if (!torneoActual) return [];
   const mapa = {};
-  torneoActual.equipos.forEach(e => { mapa[e] = { equipo: e, amarillas: 0, rojas: 0 }; });
+  torneoActual.equipos.forEach(e => { mapa[e] = { equipo: e, amarillas: 0, rojas: 0, puntos: 0 }; });
   statsActual.forEach(s => {
-    if (mapa[s.equipo]) {
-      mapa[s.equipo].amarillas += s.amarillas;
-      mapa[s.equipo].rojas     += s.rojas;
-    }
+    if (!mapa[s.equipo]) return;
+    mapa[s.equipo].amarillas += Number(s.amarillas) || 0;
+    mapa[s.equipo].rojas     += Number(s.rojas)     || 0;
   });
-  return Object.values(mapa)
-    .map(e => ({ ...e, puntos: -(e.amarillas + e.rojas * 3) }))
-    .sort((a, b) => b.puntos - a.puntos);
+  Object.values(mapa).forEach(e => { e.puntos = e.amarillas * 5 + e.rojas * 10; });
+  return Object.values(mapa).sort((a, b) =>
+    a.puntos !== b.puntos ? a.puntos - b.puntos : a.equipo.localeCompare(b.equipo)
+  );
 }
 
 function _fechaHoy() {
@@ -241,9 +315,8 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
   const fecha  = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const filasPos = pos.map((e, i) => {
-    const cls  = i === 0 ? 'pos-1' : i === 1 ? 'pos-2' : i === 2 ? 'pos-3' : '';
     const signo = e.dg > 0 ? '+' : '';
-    return `<tr class="${cls}">
+    return `<tr>
       <td>${i + 1}</td><td class="col-izq">${e.equipo}</td>
       <td>${e.pj}</td><td>${e.pg}</td><td>${e.pe}</td><td>${e.pp}</td>
       <td>${e.gf}</td><td>${e.gc}</td><td>${signo}${e.dg}</td>
@@ -255,13 +328,13 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
     `<tr><td>${i + 1}</td><td class="col-izq">${j.jugador}</td><td>${j.equipo}</td><td><strong>${j.goles}</strong></td></tr>`
   ).join('') || '<tr><td colspan="4">Sin goles registrados</td></tr>';
 
-  const filasTar = tarjetas.slice(0, 10).map((j, i) =>
-    `<tr><td>${i + 1}</td><td class="col-izq">${j.jugador}</td><td>${j.equipo}</td><td>${j.amarillas}</td><td>${j.rojas}</td></tr>`
-  ).join('') || '<tr><td colspan="5">Sin tarjetas registradas</td></tr>';
-
   const filasValla = [...pos].sort((a, b) => a.gc - b.gc || a.equipo.localeCompare(b.equipo)).map((e, i) =>
-    `<tr ${i === 0 ? 'class="pos-1"' : ''}><td>${i + 1}</td><td class="col-izq">${e.equipo}</td><td>${e.pj}</td><td><strong>${e.gc}</strong></td></tr>`
+    `<tr><td>${i + 1}</td><td class="col-izq">${e.equipo}</td><td>${e.pj}</td><td><strong>${e.gc}</strong></td></tr>`
   ).join('') || '<tr><td colspan="4">Sin partidos jugados aún</td></tr>';
+
+  const filasJL = juegoLimpio.map((e, i) =>
+    `<tr><td>${i + 1}</td><td class="col-izq">${e.equipo}</td><td>${e.amarillas}</td><td>${e.rojas}</td><td><strong>${e.puntos}</strong></td></tr>`
+  ).join('') || '<tr><td colspan="5">Sin tarjetas registradas</td></tr>';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -287,10 +360,6 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
   td{padding:8px;text-align:center;border-bottom:1px solid rgba(86,175,87,.18);font-size:.88rem}
   td.col-izq{text-align:left;font-weight:600}
   tr:last-child td{border-bottom:none}
-  tr.pos-1{background:#1D9E75;color:#fff}
-  tr.pos-2{background:#378ADD;color:#fff}
-  tr.pos-3{background:#D4820A;color:#fff}
-  tr.pos-1 td, tr.pos-2 td, tr.pos-3 td{border-bottom-color:rgba(255,255,255,.2)}
   .nota{font-size:.76rem;color:#56AF57;padding:.4rem .6rem;text-align:center}
   .footer{text-align:center;color:#56AF57;font-size:.76rem;padding:2rem 0 1rem;font-weight:600;border-top:1px solid rgba(40,128,36,.2);margin-top:1rem}
   .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
@@ -318,17 +387,7 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
 
   <div class="stats-grid">
     <div>
-      <div class="sec-titulo">&#127942; Goleadores</div>
-      <div class="tabla-wrap">
-        <table>
-          <thead><tr><th>#</th><th style="text-align:left">Jugador</th><th>Equipo</th><th>Goles</th></tr></thead>
-          <tbody>${filasGol}</tbody>
-        </table>
-        <p class="nota">Top 10 goleadores del torneo</p>
-      </div>
-    </div>
-    <div>
-      <div class="sec-titulo">&#128737; Valla Menos Vencida</div>
+      <div class="sec-titulo">&#127748; Valla Menos Vencida</div>
       <div class="tabla-wrap">
         <table>
           <thead><tr><th>#</th><th style="text-align:left">Equipo</th><th>PJ</th><th>GC</th></tr></thead>
@@ -337,14 +396,25 @@ function _plantillaHTMLEstatico(pos, goleadores, tarjetas, juegoLimpio) {
         <p class="nota">Menor cantidad de goles en contra</p>
       </div>
     </div>
+    <div>
+      <div class="sec-titulo">&#129309; Juego Limpio por Equipo</div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>#</th><th style="text-align:left">Equipo</th><th>Amarillas</th><th>Rojas</th><th>Pts</th></tr></thead>
+          <tbody>${filasJL}</tbody>
+        </table>
+        <p class="nota">Ordenado por menor cantidad de tarjetas</p>
+      </div>
+    </div>
   </div>
 
-  <div class="sec-titulo">&#127968; Tarjetas por Jugador</div>
+  <div class="sec-titulo">&#9917; Top 10 Goleadores</div>
   <div class="tabla-wrap">
     <table>
-      <thead><tr><th>#</th><th style="text-align:left">Jugador</th><th>Equipo</th><th>Amarillas</th><th>Rojas</th></tr></thead>
-      <tbody>${filasTar}</tbody>
+      <thead><tr><th>#</th><th style="text-align:left">Jugador</th><th>Equipo</th><th>Goles</th></tr></thead>
+      <tbody>${filasGol}</tbody>
     </table>
+    <p class="nota">Top 10 goleadores del torneo</p>
   </div>
 
 </div>

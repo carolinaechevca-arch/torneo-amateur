@@ -741,16 +741,21 @@ async function eliminarTorneoCompleto() {
 
   const sheetId = torneoActual?.sheetId;
   mostrarCarga('Eliminando torneo...');
+
+  // Siempre borra local primero, independientemente de si Drive falla
+  borrarTorneoLocal();
+
   try {
     if (sheetId) {
       await eliminarArchivoEnDrive(sheetId);
     }
-    borrarTorneoLocal();
-    mostrarExito('Torneo eliminado correctamente');
-    setTimeout(() => { mostrarPantalla('setup'); actualizarCamposEquipos(); }, 1200);
   } catch (err) {
-    mostrarError('No se pudo eliminar de Drive: ' + err.message);
+    // Drive falló, pero los datos locales ya fueron eliminados
+    console.warn('No se pudo eliminar el archivo de Drive:', err.message);
   } finally {
     ocultarCarga();
   }
+
+  mostrarExito('Torneo eliminado correctamente');
+  setTimeout(() => cerrarSesion(), 1200);
 }

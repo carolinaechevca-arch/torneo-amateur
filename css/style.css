@@ -303,6 +303,22 @@ label   { font-weight: 600; }
 }
 .btn-icono:hover { background: rgba(255,255,255,.15); }
 
+.btn-icon-sm {
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radio-s);
+  width: 30px; height: 30px;
+  font-size: .95rem;
+  cursor: pointer;
+  transition: background var(--t), color var(--t);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-primary);
+  flex-shrink: 0;
+}
+.btn-icon-sm:hover { background: var(--c-primary); color: #fff; }
+
 .btn-google {
   display: flex;
   align-items: center;
