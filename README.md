@@ -53,3 +53,4 @@ torneo-amateur/
 1. Haz fork o sube el repositorio a GitHub
 2. Ve a **Settings → Pages → Source: main branch**
 3. Agrega tu dominio de GitHub Pages como origen autorizado en la [Google Cloud Console](https://console.cloud.google.com/) bajo el Client ID OAuth
+# win-amateur-web
