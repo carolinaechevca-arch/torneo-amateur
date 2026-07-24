@@ -289,7 +289,7 @@ label   { font-weight: 600; }
 .btn-pequeño { padding: .4rem .85rem; font-size: .82rem; }
 
 .btn-icono {
-  background: transparent;
+  background: var(--c-surface);
   border: 2px solid var(--c-primary);
   border-radius: var(--radio-s);
   width: 38px; height: 38px;
@@ -302,8 +302,9 @@ label   { font-weight: 600; }
   color: var(--c-primary);
 }
 .btn-icono svg { width: 20px; height: 20px; }
-.btn-icono:hover { background: var(--c-surface); }
-[data-theme="dark"] .btn-icono { border-color: #FFFFFF; color: #FFFFFF; }
+.btn-icono:hover { background: var(--c-border); }
+[data-theme="dark"] .btn-icono { background: rgba(255,255,255,.08); border-color: #FFFFFF; color: #FFFFFF; }
+[data-theme="dark"] .btn-icono:hover { background: rgba(255,255,255,.18); }
 
 .btn-icon-sm {
   background: transparent;
