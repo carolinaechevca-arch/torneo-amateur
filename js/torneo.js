@@ -11,13 +11,20 @@ const LS_JUGADORES = 'ta_jugadores';
 const LS_HISTORIAL = 'ta_historial';
 
 // Estado global de la aplicación
-let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja }
-let fixtureActual   = [];    // array de partidos con resultados
+let torneoActual    = null;  // { sheetId, nombre, equipos, equiposSegunda, modalidad, precioInscripcion, precioAmarilla, precioRoja }
+let fixtureActual   = [];    // array de partidos con resultados (Primera + Segunda, distinguidos por p.categoria)
 let statsActual     = [];    // array de estadísticas de jugadores
 let horariosActual  = [];    // array de horarios de partidos
 let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula, celular }
 let historialActual = [];    // array de cambios en resultados
-let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
+let categoriaViendo  = 'primera'; // categoría actualmente seleccionada: 'primera' | 'segunda'
+let jornadaViendoPorCategoria = { primera: 1, segunda: 1 }; // jornada visible en Resultados, por categoría
+
+/* Devuelve la lista de equipos de la categoría dada (o la que se está viendo) */
+function _equiposCategoria(categoria = categoriaViendo) {
+  if (!torneoActual) return [];
+  return categoria === 'segunda' ? (torneoActual.equiposSegunda || []) : (torneoActual.equipos || []);
+}
 
 /* ──────────────────────────────────────────────
    PERSISTENCIA LOCAL
@@ -92,6 +99,14 @@ function cargarDatosApp() {
   const tb = document.getElementById('topbar-nombre-torneo');
   if (tb) tb.textContent = torneoActual.nombre;
 
+  // Selector de categoría: solo visible si el torneo tiene Segunda
+  categoriaViendo = 'primera';
+  const toggleCat = document.getElementById('categoria-toggle');
+  if (toggleCat) {
+    toggleCat.classList.toggle('oculto', !(torneoActual.equiposSegunda?.length > 0));
+    document.querySelectorAll('.categoria-toggle-btn').forEach(b => b.classList.toggle('activo', b.dataset.cat === categoriaViendo));
+  }
+
   // Renderizar cada sección
   renderizarInicio();
   renderizarPosiciones();
@@ -101,8 +116,8 @@ function cargarDatosApp() {
   _poblarEquiposJugadores();
 
   // Jornada actual: primera con partidos pendientes
-  jornadaViendo = calcularJornadaActual();
-  renderizarResultados(jornadaViendo);
+  jornadaViendoPorCategoria = { primera: calcularJornadaActual('primera'), segunda: calcularJornadaActual('segunda') };
+  renderizarResultados(jornadaViendoPorCategoria[categoriaViendo]);
 
   // Link a Google Sheets
   const link = document.getElementById('link-sheet');
@@ -148,6 +163,43 @@ function actualizarCamposEquipos() {
   }
 }
 
+/* Muestra/oculta el bloque de equipos de Segunda */
+function toggleCategoriaSegunda() {
+  const tiene = document.getElementById('tiene-segunda')?.checked;
+  const bloque = document.getElementById('bloque-segunda');
+  if (bloque) bloque.classList.toggle('oculto', !tiene);
+  if (tiene) actualizarCamposEquiposSegunda();
+}
+
+/* Actualiza dinámicamente los inputs de nombre de equipo de Segunda */
+function actualizarCamposEquiposSegunda() {
+  const n = parseInt(document.getElementById('num-equipos-segunda')?.value || 8);
+  const contenedor = document.getElementById('campos-equipos-segunda');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '';
+
+  const aviso = document.getElementById('aviso-impar-segunda');
+  if (aviso) aviso.remove();
+  if (n % 2 !== 0) {
+    const nota = document.createElement('p');
+    nota.id = 'aviso-impar-segunda';
+    nota.className = 'info-texto';
+    nota.style.gridColumn = '1 / -1';
+    nota.innerHTML = '⚠️ Con número impar de equipos, uno descansa por jornada (se indica en el fixture).';
+    contenedor.appendChild(nota);
+  }
+
+  for (let i = 1; i <= n; i++) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = `Equipo ${i}`;
+    input.id = `equipo-segunda-${i}`;
+    input.maxLength = 30;
+    contenedor.appendChild(input);
+  }
+}
+
 /* Crea el torneo: genera fixture, crea la hoja en Drive y guarda en localStorage */
 async function crearTorneo() {
   const nombre = document.getElementById('torneo-nombre')?.value.trim();
@@ -164,7 +216,7 @@ async function crearTorneo() {
     return;
   }
 
-  // Recoger nombres de equipos
+  // Recoger nombres de equipos (Primera)
   const equipos = [];
   for (let i = 1; i <= numEquipos; i++) {
     const v = document.getElementById(`equipo-${i}`)?.value.trim();
@@ -178,6 +230,26 @@ async function crearTorneo() {
       return;
     }
     equipos.push(v);
+  }
+
+  // Recoger nombres de equipos (Segunda), si aplica
+  const tieneSegunda = document.getElementById('tiene-segunda')?.checked;
+  const equiposSegunda = [];
+  if (tieneSegunda) {
+    const numEquiposSegunda = parseInt(document.getElementById('num-equipos-segunda')?.value || 8);
+    for (let i = 1; i <= numEquiposSegunda; i++) {
+      const v = document.getElementById(`equipo-segunda-${i}`)?.value.trim();
+      if (!v) {
+        mostrarError(`Por favor ingresa el nombre del Equipo ${i} de Segunda.`);
+        document.getElementById(`equipo-segunda-${i}`)?.focus();
+        return;
+      }
+      if (equiposSegunda.includes(v)) {
+        mostrarError(`El nombre "${v}" está repetido en Segunda. Cada equipo debe tener un nombre único.`);
+        return;
+      }
+      equiposSegunda.push(v);
+    }
   }
 
   // Mostrar estado de carga
@@ -198,17 +270,28 @@ async function crearTorneo() {
     );
     const sheetId = sheetData.spreadsheetId;
 
-    // 2. Generar fixture
-    const fixture = modalidad === 'ida-vuelta'
-      ? generarFixtureIdaVuelta(equipos)
-      : generarFixtureRoundRobin(equipos);
+    // 2. Generar fixture (Primera, y Segunda si aplica), con horarios equitativos
+    const fixturePrimera = modalidad === 'ida-vuelta'
+      ? generarFixtureIdaVuelta(equipos, 'primera')
+      : generarFixtureRoundRobin(equipos, 'primera');
+    asignarHorariosEquitativos(fixturePrimera);
+
+    let fixtureSegunda = [];
+    if (tieneSegunda) {
+      fixtureSegunda = modalidad === 'ida-vuelta'
+        ? generarFixtureIdaVuelta(equiposSegunda, 'segunda')
+        : generarFixtureRoundRobin(equiposSegunda, 'segunda');
+      asignarHorariosEquitativos(fixtureSegunda);
+    }
+
+    const fixture = [...fixturePrimera, ...fixtureSegunda];
 
     // 3. Escribir datos iniciales en las hojas
     mostrarCarga('Escribiendo datos iniciales...');
-    await _inicializarHojasSheets(sheetId, nombre, equipos, fixture);
+    await _inicializarHojasSheets(sheetId, nombre, equipos, equiposSegunda, fixture);
 
     // 4. Guardar en localStorage
-    const torneoData = { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja };
+    const torneoData = { sheetId, nombre, equipos, equiposSegunda, modalidad, precioInscripcion, precioAmarilla, precioRoja };
     guardarTorneoLocal(torneoData);
     guardarFixtureLocal(fixture);
     guardarStatsLocal([]);
@@ -230,30 +313,32 @@ async function crearTorneo() {
 }
 
 /* Escribe los datos iniciales en todas las hojas del spreadsheet */
-async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture) {
+async function _inicializarHojasSheets(sheetId, nombre, equipos, equiposSegunda, fixture) {
   // Hoja Equipos
   const filasEquipos = [
-    ['ID', 'Nombre'],
-    ...equipos.map((e, i) => [i + 1, e])
+    ['ID', 'Nombre', 'Categoria'],
+    ...equipos.map((e, i) => [i + 1, e, 'Primera']),
+    ...equiposSegunda.map((e, i) => [i + 1, e, 'Segunda'])
   ];
 
   // Hoja Fixture
   const filasFixture = [
-    ['Jornada', 'ID', 'Local', 'Visitante', 'Goles Local', 'Goles Visitante', 'Estado'],
-    ...fixture.map(p => [p.jornada, p.id, p.local, p.visitante, '', '', 'pendiente'])
+    ['Categoria', 'Jornada', 'ID', 'Local', 'Visitante', 'Goles Local', 'Goles Visitante', 'Estado'],
+    ...fixture.map(p => [p.categoria === 'segunda' ? 'Segunda' : 'Primera', p.jornada, p.id, p.local, p.visitante, '', '', 'pendiente'])
   ];
 
   // Hoja Posiciones (inicial con ceros)
   const filasPos = [
-    ['Equipo', 'PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts'],
-    ...equipos.map(e => [e, 0, 0, 0, 0, 0, 0, 0, 0])
+    ['Categoria', 'Equipo', 'PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts'],
+    ...equipos.map(e => ['Primera', e, 0, 0, 0, 0, 0, 0, 0, 0]),
+    ...equiposSegunda.map(e => ['Segunda', e, 0, 0, 0, 0, 0, 0, 0, 0])
   ];
 
   // Hoja Estadísticas
-  const filasStats = [['Jornada', 'Partido', 'Equipo', 'Jugador', 'Goles', 'Amarillas', 'Rojas']];
+  const filasStats = [['Categoria', 'Jornada', 'Partido', 'Equipo', 'Jugador', 'Goles', 'Amarillas', 'Rojas']];
 
   // Hoja Jornadas
-  const filasJornadas = [['Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora', 'Cancha']];
+  const filasJornadas = [['Categoria', 'Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora']];
 
   await escribirLotes(sheetId, [
     { rango: 'Equipos!A1',     valores: filasEquipos },
@@ -270,8 +355,11 @@ async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture) {
 
 /* Genera el fixture de una vuelta (todos contra todos una vez).
    Con número impar de equipos agrega BYE y genera una entrada
-   de "descansa" para el equipo libre en cada jornada. */
-function generarFixtureRoundRobin(equipos) {
+   de "descansa" para el equipo libre en cada jornada.
+   `categoria` ('primera' | 'segunda') se guarda en cada partido y prefija
+   sus IDs para que Primera y Segunda nunca choquen. */
+function generarFixtureRoundRobin(equipos, categoria = 'primera') {
+  const prefijo = categoria === 'segunda' ? 'S_' : '';
   const lista = [...equipos];
   const esImpar = lista.length % 2 !== 0;
   if (esImpar) lista.push('BYE');
@@ -294,20 +382,20 @@ function generarFixtureRoundRobin(equipos) {
       if (local === 'BYE') {
         // visitante descansa esta jornada
         partidos.push({
-          jornada: r + 1, id: `D${r + 1}_${i + 1}`,
+          jornada: r + 1, id: `${prefijo}D${r + 1}_${i + 1}`, categoria,
           local: visitante, visitante: 'DESCANSA',
           golesLocal: '', golesVisitante: '', estado: 'descansa'
         });
       } else if (visitante === 'BYE') {
         // local descansa esta jornada
         partidos.push({
-          jornada: r + 1, id: `D${r + 1}_${i + 1}`,
+          jornada: r + 1, id: `${prefijo}D${r + 1}_${i + 1}`, categoria,
           local, visitante: 'DESCANSA',
           golesLocal: '', golesVisitante: '', estado: 'descansa'
         });
       } else {
         partidos.push({
-          jornada: r + 1, id: `J${r + 1}_${i + 1}`,
+          jornada: r + 1, id: `${prefijo}J${r + 1}_${i + 1}`, categoria,
           local, visitante,
           golesLocal: '', golesVisitante: '', estado: 'pendiente'
         });
@@ -321,14 +409,15 @@ function generarFixtureRoundRobin(equipos) {
 }
 
 /* Genera el fixture de ida y vuelta (duplica con equipos invertidos). */
-function generarFixtureIdaVuelta(equipos) {
-  const ida      = generarFixtureRoundRobin(equipos);
+function generarFixtureIdaVuelta(equipos, categoria = 'primera') {
+  const prefijo  = categoria === 'segunda' ? 'S_' : '';
+  const ida      = generarFixtureRoundRobin(equipos, categoria);
   const maxJorn  = Math.max(...ida.map(p => p.jornada));
 
   const vuelta = ida.map(p => ({
     ...p,
     jornada:        p.jornada + maxJorn,
-    id:             `V${p.jornada}_${p.id.split('_')[1]}`,
+    id:             `${prefijo}V${p.jornada}_${p.id.split('_').pop()}`,
     local:          p.visitante,
     visitante:      p.local,
     golesLocal:     '',
@@ -339,12 +428,87 @@ function generarFixtureIdaVuelta(equipos) {
   return [...ida, ...vuelta];
 }
 
-/* Devuelve la primera jornada que todavía tiene partidos pendientes */
-function calcularJornadaActual() {
-  if (!fixtureActual.length) return 1;
-  const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
+/* ──────────────────────────────────────────────
+   HORARIOS EQUITATIVOS
+   ────────────────────────────────────────────── */
+
+/* Reordena los partidos DENTRO de cada jornada (el orden de exhibición
+   representa el horario: el primero es el más temprano y el último el más
+   tarde) para que, jornada tras jornada, ningún equipo:
+     a) juegue en el horario más temprano (slot 0) dos jornadas seguidas, y
+     b) repita el mismo horario/posición muchas veces seguidas.
+   No cambia los emparejamientos (local/visitante), solo su posición.
+   Los partidos "descansa" no ocupan horario y quedan al final del bloque. */
+function asignarHorariosEquitativos(partidos) {
+  const jornadas = [...new Set(partidos.map(p => p.jornada))].sort((a, b) => a - b);
+  const ultimoSlot = {};
+  const streak = {};
+
+  const costo = (partido, slot) => {
+    let c = 0;
+    [partido.local, partido.visitante].forEach(eq => {
+      if (slot === 0 && ultimoSlot[eq] === 0) c += 1000;
+      if (slot === ultimoSlot[eq]) c += 100 * (streak[eq] || 1);
+    });
+    return c;
+  };
+
+  jornadas.forEach(j => {
+    const indices  = [];
+    partidos.forEach((p, idx) => { if (p.jornada === j) indices.push(idx); });
+
+    const jugables  = indices.filter(idx => partidos[idx].estado !== 'descansa').map(idx => partidos[idx]);
+    const descansa  = indices.filter(idx => partidos[idx].estado === 'descansa').map(idx => partidos[idx]);
+    const k = jugables.length;
+
+    if (k > 0) {
+      const pendientes  = [...jugables];
+      const slotsLibres = [...Array(k).keys()];
+      const asignados   = []; // { partido, slot }
+
+      while (pendientes.length) {
+        let peorIdx = 0, peorCosto = -1, peorSlot = slotsLibres[0];
+        pendientes.forEach((p, idx) => {
+          let mejorSlot = slotsLibres[0], mejorCosto = Infinity;
+          slotsLibres.forEach(s => {
+            const c = costo(p, s);
+            if (c < mejorCosto) { mejorCosto = c; mejorSlot = s; }
+          });
+          if (mejorCosto > peorCosto) { peorCosto = mejorCosto; peorIdx = idx; peorSlot = mejorSlot; }
+        });
+        const partido = pendientes.splice(peorIdx, 1)[0];
+        slotsLibres.splice(slotsLibres.indexOf(peorSlot), 1);
+        asignados.push({ partido, slot: peorSlot });
+      }
+
+      asignados.sort((a, b) => a.slot - b.slot);
+      const ordenJornada = [...asignados.map(a => a.partido), ...descansa];
+      indices.forEach((idx, k2) => { partidos[idx] = ordenJornada[k2]; });
+
+      // Actualizar historial de slots por equipo para la próxima jornada
+      const slotPorEquipo = {};
+      asignados.forEach(({ partido, slot }) => {
+        slotPorEquipo[partido.local]     = slot;
+        slotPorEquipo[partido.visitante] = slot;
+      });
+      Object.keys(slotPorEquipo).forEach(eq => {
+        const nuevo = slotPorEquipo[eq];
+        streak[eq]     = (ultimoSlot[eq] === nuevo) ? (streak[eq] || 1) + 1 : 1;
+        ultimoSlot[eq] = nuevo;
+      });
+    }
+  });
+
+  return partidos;
+}
+
+/* Devuelve la primera jornada que todavía tiene partidos pendientes, para la categoría dada */
+function calcularJornadaActual(categoria = categoriaViendo) {
+  const partidos = fixtureActual.filter(p => (p.categoria || 'primera') === categoria);
+  if (!partidos.length) return 1;
+  const jornadas = [...new Set(partidos.map(p => p.jornada))].sort((a, b) => a - b);
   for (const j of jornadas) {
-    if (fixtureActual.filter(p => p.jornada === j).some(p => p.estado === 'pendiente')) return j;
+    if (partidos.filter(p => p.jornada === j).some(p => p.estado === 'pendiente')) return j;
   }
   return jornadas[jornadas.length - 1];
 }
@@ -356,17 +520,18 @@ function calcularJornadaActual() {
 function renderizarInicio() {
   if (!torneoActual) return;
 
-  // Estadísticas de tarjetas
-  const jugados   = fixtureActual.filter(p => p.estado === 'jugado').length;
+  // Estadísticas de tarjetas — totales combinados de Primera + Segunda
+  const jugados    = fixtureActual.filter(p => p.estado === 'jugado').length;
   const pendientes = fixtureActual.filter(p => p.estado === 'pendiente').length;
-  const jornadas  = new Set(fixtureActual.map(p => p.jornada)).size;
+  const jornadas   = new Set(fixtureActual.map(p => `${p.categoria || 'primera'}_${p.jornada}`)).size;
+  const totalEquipos = (torneoActual.equipos?.length || 0) + (torneoActual.equiposSegunda?.length || 0);
 
-  _setText('stat-equipos',   torneoActual.equipos.length);
+  _setText('stat-equipos',   totalEquipos);
   _setText('stat-jornadas',  jornadas);
   _setText('stat-jugados',   jugados);
   _setText('stat-pendientes', pendientes);
 
-  // Top 3 posiciones
+  // Top 3 posiciones — de la categoría seleccionada
   const pos = calcularClasificacion();
   const top3El = document.getElementById('inicio-top3');
   if (top3El) {
@@ -384,11 +549,11 @@ function renderizarInicio() {
     }
   }
 
-  // Próximos partidos — jornada activa completa
+  // Próximos partidos — jornada activa completa de la categoría seleccionada
   const proxEl = document.getElementById('inicio-proximos');
   if (proxEl) {
     const jornadaActiva = calcularJornadaActual();
-    const partidosJornada = fixtureActual.filter(p => p.jornada === jornadaActiva);
+    const partidosJornada = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.jornada === jornadaActiva);
     const hayPendientes = partidosJornada.some(p => p.estado === 'pendiente');
 
     if (!hayPendientes || partidosJornada.length === 0) {
@@ -438,13 +603,28 @@ function mostrarSeccion(seccionId) {
     document.getElementById('sidebar-overlay')?.classList.add('oculto');
   }
 
-  // Renderizar la sección según sea necesaria
-  if (seccionId === 'sec-resultados')  renderizarResultados(jornadaViendo);
+  _renderizarSeccionActual(seccionId);
+}
+
+/* Renderiza el contenido de una sección (compartido por mostrarSeccion y cambiarCategoria) */
+function _renderizarSeccionActual(seccionId) {
+  if (seccionId === 'sec-inicio')      renderizarInicio();
+  if (seccionId === 'sec-resultados')  renderizarResultados(jornadaViendoPorCategoria[categoriaViendo]);
   if (seccionId === 'sec-posiciones')  renderizarPosiciones();
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
   if (seccionId === 'sec-fixture')     renderizarFixture();
   if (seccionId === 'sec-jugadores')   { _poblarEquiposJugadores(); renderizarJugadores(); }
+}
+
+/* Cambia la categoría activa (Primera/Segunda) y vuelve a renderizar la sección visible */
+function cambiarCategoria(cat) {
+  if (categoriaViendo === cat) return;
+  categoriaViendo = cat;
+  document.querySelectorAll('.categoria-toggle-btn').forEach(b => b.classList.toggle('activo', b.dataset.cat === cat));
+
+  const seccionVisible = document.querySelector('.seccion:not(.oculto)');
+  if (seccionVisible) _renderizarSeccionActual(seccionVisible.id);
 }
 
 /* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */
@@ -515,8 +695,10 @@ function ocultarCarga() {
 function _poblarEquiposJugadores() {
   const sel = document.getElementById('gestion-equipo');
   if (!sel || !torneoActual) return;
+  const valorPrevio = sel.value;
   sel.innerHTML = '<option value="">Seleccionar equipo...</option>' +
-    torneoActual.equipos.map(e => `<option value="${e}">${e}</option>`).join('');
+    _equiposCategoria(categoriaViendo).map(e => `<option value="${e}">${e}</option>`).join('');
+  if (valorPrevio && _equiposCategoria(categoriaViendo).includes(valorPrevio)) sel.value = valorPrevio;
 }
 
 /* Navega a la sección de gestión de jugadores */
@@ -698,15 +880,16 @@ function eliminarJugador(id) {
 
 function renderizarFixture() {
   const cont = document.getElementById('fixture-container');
-  if (!cont || !torneoActual || !fixtureActual.length) {
+  const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
+  if (!cont || !torneoActual || !partidosCat.length) {
     if (cont) cont.innerHTML = '<p class="sin-datos">Crea un torneo para ver el fixture.</p>';
     return;
   }
 
-  const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
+  const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
 
   cont.innerHTML = jornadas.map(j => {
-    const partidos = fixtureActual.filter(p => p.jornada === j);
+    const partidos = partidosCat.filter(p => p.jornada === j);
     const filas = partidos.map(p => {
       if (p.estado === 'descansa') {
         return `<div class="fixture-fila fixture-descansa">

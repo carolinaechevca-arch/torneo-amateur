@@ -64,7 +64,7 @@ async function exportarTabla(elementoId) {
 
     const link = document.createElement('a');
     const nombreArchivo = torneoActual?.nombre?.replace(/[^a-zA-Z0-9]/g, '_') || 'torneo';
-    link.download = `${nombreArchivo}_${elementoId}_${_fechaHoy()}.png`;
+    link.download = `${nombreArchivo}_${elementoId}${_sufijoCategoria()}_${_fechaHoy()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 
@@ -84,7 +84,8 @@ function generarHTMLEstatico() {
 
   mostrarCarga('Generando página web...');
   try {
-    const nombre     = torneoActual.nombre;
+    const sufijoTitulo = torneoActual.equiposSegunda?.length ? (categoriaViendo === 'segunda' ? ' — Segunda' : ' — Primera') : '';
+    const nombre     = torneoActual.nombre + sufijoTitulo;
     const fecha      = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
     const pos        = calcularClasificacion();
     const goleadores = _calcularGoleadoresList();
@@ -205,7 +206,8 @@ async function generarCuatroImagenes() {
 
   const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
   const bgColor = isDark ? '#162816' : '#ffffff';
-  const nombre  = torneoActual.nombre;
+  const sufijoTitulo = torneoActual.equiposSegunda?.length ? (categoriaViendo === 'segunda' ? ' — Segunda' : ' — Primera') : '';
+  const nombre  = torneoActual.nombre + sufijoTitulo;
   const fecha   = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const pos       = calcularClasificacion();
@@ -307,9 +309,10 @@ async function generarCuatroImagenes() {
    HELPERS PARA DATOS
    ────────────────────────────────────────────── */
 
-function _calcularGoleadoresList() {
+function _calcularGoleadoresList(categoria = categoriaViendo) {
+  const equiposCat = _equiposCategoria(categoria);
   const mapa = {};
-  statsActual.forEach(s => {
+  statsActual.filter(s => equiposCat.includes(s.equipo)).forEach(s => {
     if (s.goles <= 0) return;
     const k = `${s.jugador}|||${s.equipo}`;
     if (!mapa[k]) mapa[k] = { jugador: s.jugador, equipo: s.equipo, goles: 0 };
@@ -319,10 +322,11 @@ function _calcularGoleadoresList() {
 }
 
 
-function _calcularJuegoLimpioList() {
+function _calcularJuegoLimpioList(categoria = categoriaViendo) {
   if (!torneoActual) return [];
+  const equiposCat = _equiposCategoria(categoria);
   const mapa = {};
-  torneoActual.equipos.forEach(e => { mapa[e] = { equipo: e, amarillas: 0, rojas: 0, puntos: 0 }; });
+  equiposCat.forEach(e => { mapa[e] = { equipo: e, amarillas: 0, rojas: 0, puntos: 0 }; });
   statsActual.forEach(s => {
     if (!mapa[s.equipo]) return;
     mapa[s.equipo].amarillas += Number(s.amarillas) || 0;
@@ -334,6 +338,11 @@ function _calcularJuegoLimpioList() {
   );
 }
 
+/* Sufijo de nombre de archivo/título para distinguir categoría, solo si el torneo tiene Segunda */
+function _sufijoCategoria() {
+  return torneoActual?.equiposSegunda?.length ? (categoriaViendo === 'segunda' ? '_Segunda' : '_Primera') : '';
+}
+
 function _fechaHoy() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -343,12 +352,14 @@ function exportarFixtureHTML() {
   if (!torneoActual) { mostrarError('No hay torneo activo.'); return; }
   mostrarCarga('Generando fixture...');
   try {
-    const nombre = torneoActual.nombre;
+    const sufijoTitulo = torneoActual.equiposSegunda?.length ? (categoriaViendo === 'segunda' ? ' — Segunda' : ' — Primera') : '';
+    const nombre = torneoActual.nombre + sufijoTitulo;
     const fecha  = new Date().toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
-    const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
+    const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
+    const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
 
     const bloques = jornadas.map(j => {
-      const partidos = fixtureActual.filter(p => p.jornada === j);
+      const partidos = partidosCat.filter(p => p.jornada === j);
       const filas = partidos.map(p => {
         if (p.estado === 'descansa') {
           return `<tr><td colspan="3" style="text-align:left;color:#888">${p.local} — descansa</td><td>–</td></tr>`;

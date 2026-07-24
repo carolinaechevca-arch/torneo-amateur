@@ -7,17 +7,20 @@
    ────────────────────────────────────────────── */
 
 function jornadaAnterior() {
-  if (jornadaViendo > 1) {
-    jornadaViendo--;
-    renderizarResultados(jornadaViendo);
+  const j = jornadaViendoPorCategoria[categoriaViendo];
+  if (j > 1) {
+    jornadaViendoPorCategoria[categoriaViendo] = j - 1;
+    renderizarResultados(jornadaViendoPorCategoria[categoriaViendo]);
   }
 }
 
 function jornadaSiguiente() {
-  const maxJornada = Math.max(...fixtureActual.map(p => p.jornada), 1);
-  if (jornadaViendo < maxJornada) {
-    jornadaViendo++;
-    renderizarResultados(jornadaViendo);
+  const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
+  const maxJornada = Math.max(...partidosCat.map(p => p.jornada), 1);
+  const j = jornadaViendoPorCategoria[categoriaViendo];
+  if (j < maxJornada) {
+    jornadaViendoPorCategoria[categoriaViendo] = j + 1;
+    renderizarResultados(jornadaViendoPorCategoria[categoriaViendo]);
   }
 }
 
@@ -26,17 +29,18 @@ function jornadaSiguiente() {
    ────────────────────────────────────────────── */
 
 function renderizarResultados(jornada) {
-  if (!torneoActual || !fixtureActual.length) {
+  const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
+  if (!torneoActual || !partidosCat.length) {
     _setText('partidos-jornada', '');
     document.getElementById('partidos-jornada').innerHTML =
       '<p class="sin-datos">No hay partidos. Crea un torneo primero.</p>';
     return;
   }
 
-  const maxJornada = Math.max(...fixtureActual.map(p => p.jornada));
+  const maxJornada = Math.max(...partidosCat.map(p => p.jornada));
   _setText('jornada-actual-label', `Jornada ${jornada} de ${maxJornada}`);
 
-  const partidos = fixtureActual.filter(p => p.jornada === jornada);
+  const partidos = partidosCat.filter(p => p.jornada === jornada);
   const jornadaActualCalculada = calcularJornadaActual();
   const esJornadaActiva = jornada === jornadaActualCalculada;
 
@@ -110,7 +114,8 @@ function renderizarResultados(jornada) {
    ────────────────────────────────────────────── */
 
 async function guardarResultados() {
-  const partidos = fixtureActual.filter(p => p.jornada === jornadaViendo && p.estado !== 'descansa');
+  const jornadaViendo = jornadaViendoPorCategoria[categoriaViendo];
+  const partidos = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.jornada === jornadaViendo && p.estado !== 'descansa');
   let cambios = 0;
   const ahora = new Date().toISOString();
 
@@ -163,8 +168,7 @@ async function guardarResultados() {
     guardarFixtureLocal(fixtureActual);
     guardarHistorialLocal(historialActual);
     await _sincronizarFixtureSheets();
-    const posiciones = calcularClasificacion();
-    await _sincronizarPosicionesSheets(posiciones);
+    await _sincronizarPosicionesSheets();
 
     mostrarExito(`✅ ${cambios} cambio${cambios > 1 ? 's' : ''} guardado${cambios > 1 ? 's' : ''}`);
     renderizarResultados(jornadaViendo);
@@ -205,8 +209,9 @@ async function _sincronizarFixtureSheets() {
   if (!sheetId) return;
 
   const filas = [
-    ['Jornada', 'ID', 'Local', 'Visitante', 'Goles Local', 'Goles Visitante', 'Estado'],
+    ['Categoria', 'Jornada', 'ID', 'Local', 'Visitante', 'Goles Local', 'Goles Visitante', 'Estado'],
     ...fixtureActual.map(p => [
+      p.categoria === 'segunda' ? 'Segunda' : 'Primera',
       p.jornada, p.id, p.local, p.visitante,
       p.golesLocal !== '' ? p.golesLocal : '',
       p.golesVisitante !== '' ? p.golesVisitante : '',
@@ -217,15 +222,16 @@ async function _sincronizarFixtureSheets() {
   await limpiarYEscribir(sheetId, 'Fixture', filas);
 }
 
-/* Escribe la tabla de posiciones en la hoja "Posiciones" de Sheets */
-async function _sincronizarPosicionesSheets(posiciones) {
+/* Escribe la tabla de posiciones (Primera y Segunda) en la hoja "Posiciones" de Sheets */
+async function _sincronizarPosicionesSheets() {
   const sheetId = torneoActual?.sheetId;
   if (!sheetId) return;
 
-  const filas = [
-    ['Equipo', 'PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts'],
-    ...posiciones.map(e => [e.equipo, e.pj, e.pg, e.pe, e.pp, e.gf, e.gc, e.dg, e.pts])
-  ];
+  const filas = [['Categoria', 'Equipo', 'PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts']];
+  calcularClasificacion('primera').forEach(e => filas.push(['Primera', e.equipo, e.pj, e.pg, e.pe, e.pp, e.gf, e.gc, e.dg, e.pts]));
+  if (torneoActual.equiposSegunda?.length) {
+    calcularClasificacion('segunda').forEach(e => filas.push(['Segunda', e.equipo, e.pj, e.pg, e.pe, e.pp, e.gf, e.gc, e.dg, e.pts]));
+  }
 
   await limpiarYEscribir(sheetId, 'Posiciones', filas);
 }

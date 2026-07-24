@@ -4,18 +4,21 @@
 
 /* Calcula la tabla de posiciones a partir del fixture con resultados.
    Ordena por: puntos → diferencia de goles → goles a favor → nombre. */
-function calcularClasificacion() {
+function calcularClasificacion(categoria = categoriaViendo) {
   if (!torneoActual || !fixtureActual.length) return [];
+
+  const equipos = _equiposCategoria(categoria);
+  if (!equipos.length) return [];
 
   // Inicializar un objeto por equipo
   const tabla = {};
-  torneoActual.equipos.forEach(e => {
+  equipos.forEach(e => {
     tabla[e] = { equipo: e, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0 };
   });
 
-  // Procesar solo partidos jugados
+  // Procesar solo partidos jugados de esa categoría
   fixtureActual
-    .filter(p => p.estado === 'jugado')
+    .filter(p => p.estado === 'jugado' && (p.categoria || 'primera') === categoria)
     .forEach(p => {
       const gl = Number(p.golesLocal)     || 0;
       const gv = Number(p.golesVisitante) || 0;
