@@ -11,7 +11,7 @@ const LS_JUGADORES = 'ta_jugadores';
 const LS_HISTORIAL = 'ta_historial';
 
 // Estado global de la aplicación
-let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad }
+let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja }
 let fixtureActual   = [];    // array de partidos con resultados
 let statsActual     = [];    // array de estadísticas de jugadores
 let horariosActual  = [];    // array de horarios de partidos
@@ -153,6 +153,9 @@ async function crearTorneo() {
   const nombre = document.getElementById('torneo-nombre')?.value.trim();
   const numEquipos = parseInt(document.getElementById('num-equipos')?.value || 8);
   const modalidad  = document.getElementById('modalidad')?.value || 'ida';
+  const precioInscripcion = parseFloat(document.getElementById('precio-inscripcion')?.value || 0);
+  const precioAmarilla    = parseFloat(document.getElementById('precio-amarilla')?.value || 0);
+  const precioRoja        = parseFloat(document.getElementById('precio-roja')?.value || 0);
 
   // Validar nombre
   if (!nombre) {
@@ -205,7 +208,7 @@ async function crearTorneo() {
     await _inicializarHojasSheets(sheetId, nombre, equipos, fixture);
 
     // 4. Guardar en localStorage
-    const torneoData = { sheetId, nombre, equipos, modalidad };
+    const torneoData = { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja };
     guardarTorneoLocal(torneoData);
     guardarFixtureLocal(fixture);
     guardarStatsLocal([]);

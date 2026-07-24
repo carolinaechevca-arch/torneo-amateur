@@ -290,7 +290,7 @@ label   { font-weight: 600; }
 
 .btn-icono {
   background: transparent;
-  border: 1px solid rgba(255,255,255,.25);
+  border: 2px solid var(--c-primary);
   border-radius: var(--radio-s);
   width: 38px; height: 38px;
   font-size: 1.1rem;
@@ -299,9 +299,9 @@ label   { font-weight: 600; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--c-text-on-dark);
+  color: var(--c-primary);
 }
-.btn-icono:hover { background: rgba(255,255,255,.15); }
+.btn-icono:hover { background: var(--c-surface); }
 
 .btn-icon-sm {
   background: transparent;
