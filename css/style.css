@@ -301,7 +301,9 @@ label   { font-weight: 600; }
   justify-content: center;
   color: var(--c-primary);
 }
+.btn-icono svg { width: 20px; height: 20px; }
 .btn-icono:hover { background: var(--c-surface); }
+[data-theme="dark"] .btn-icono { border-color: #FFFFFF; color: #FFFFFF; }
 
 .btn-icon-sm {
   background: transparent;
