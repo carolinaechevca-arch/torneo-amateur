@@ -359,7 +359,7 @@ function exportarFixtureHTML() {
     const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
 
     const bloques = jornadas.map(j => {
-      const partidos = partidosCat.filter(p => p.jornada === j);
+      const partidos = _ordenarDescansaAlFinal(partidosCat.filter(p => p.jornada === j));
       const filas = partidos.map(p => {
         if (p.estado === 'descansa') {
           return `<tr><td colspan="3" style="text-align:left;color:#888">${p.local} — descansa</td><td>–</td></tr>`;

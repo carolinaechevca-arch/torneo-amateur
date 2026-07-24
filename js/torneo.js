@@ -26,6 +26,12 @@ function _equiposCategoria(categoria = categoriaViendo) {
   return categoria === 'segunda' ? (torneoActual.equiposSegunda || []) : (torneoActual.equipos || []);
 }
 
+/* Devuelve una copia de los partidos de una jornada con el/los "descansa" siempre al final
+   (orden estable: no altera el orden relativo de los partidos jugables entre sí). */
+function _ordenarDescansaAlFinal(partidos) {
+  return [...partidos].sort((a, b) => (a.estado === 'descansa' ? 1 : 0) - (b.estado === 'descansa' ? 1 : 0));
+}
+
 /* ──────────────────────────────────────────────
    PERSISTENCIA LOCAL
    ────────────────────────────────────────────── */
@@ -553,7 +559,7 @@ function renderizarInicio() {
   const proxEl = document.getElementById('inicio-proximos');
   if (proxEl) {
     const jornadaActiva = calcularJornadaActual();
-    const partidosJornada = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.jornada === jornadaActiva);
+    const partidosJornada = _ordenarDescansaAlFinal(fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.jornada === jornadaActiva));
     const hayPendientes = partidosJornada.some(p => p.estado === 'pendiente');
 
     if (!hayPendientes || partidosJornada.length === 0) {
@@ -889,7 +895,7 @@ function renderizarFixture() {
   const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
 
   cont.innerHTML = jornadas.map(j => {
-    const partidos = partidosCat.filter(p => p.jornada === j);
+    const partidos = _ordenarDescansaAlFinal(partidosCat.filter(p => p.jornada === j));
     const filas = partidos.map(p => {
       if (p.estado === 'descansa') {
         return `<div class="fixture-fila fixture-descansa">

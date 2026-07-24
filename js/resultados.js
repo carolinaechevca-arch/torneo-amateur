@@ -40,7 +40,7 @@ function renderizarResultados(jornada) {
   const maxJornada = Math.max(...partidosCat.map(p => p.jornada));
   _setText('jornada-actual-label', `Jornada ${jornada} de ${maxJornada}`);
 
-  const partidos = partidosCat.filter(p => p.jornada === jornada);
+  const partidos = _ordenarDescansaAlFinal(partidosCat.filter(p => p.jornada === jornada));
   const jornadaActualCalculada = calcularJornadaActual();
   const esJornadaActiva = jornada === jornadaActualCalculada;
 

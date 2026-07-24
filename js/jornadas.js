@@ -14,7 +14,7 @@ function renderizarCalendario() {
   const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
 
   cont.innerHTML = jornadas.map(j => {
-    const partidos = partidosCat.filter(p => p.jornada === j);
+    const partidos = _ordenarDescansaAlFinal(partidosCat.filter(p => p.jornada === j));
 
     const filaPartidos = partidos.map(p => {
       const h = horariosActual.find(h => h.partidoId === p.id) || {};
