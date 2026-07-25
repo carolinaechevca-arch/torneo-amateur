@@ -1189,6 +1189,15 @@ label   { font-weight: 600; }
 }
 @media (min-width: 480px) { .horario-inputs { grid-template-columns: 1fr 1fr 2fr; } }
 
+.jornada-partido-descansa .partido-vs-mini {
+  margin-bottom: 0;
+  justify-content: center;
+  color: var(--c-text-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+.jornada-partido-descansa .equipo-mini { flex: none; font-weight: 700; font-style: normal; color: var(--c-text-primary); }
+
 .horario-campo label {
   display: block;
   font-size: .76rem;

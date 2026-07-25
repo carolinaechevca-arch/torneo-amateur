@@ -360,7 +360,7 @@ function exportarFixtureHTML() {
         const result = p.estado === 'jugado' ? `${p.golesLocal} – ${p.golesVisitante}` : '–';
         return `<tr><td>${meta}</td><td style="text-align:left">${p.local} vs ${p.visitante}</td><td>${result}</td></tr>`;
       }).join('');
-      return `<h2>Jornada ${j}</h2><table><thead><tr><th>Fecha / Hora</th><th style="text-align:left">Partido</th><th>Resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
+      return `<h2>Jornada ${j}</h2><div class="tw"><table><thead><tr><th>Fecha / Hora</th><th style="text-align:left">Partido</th><th>Resultado</th></tr></thead><tbody>${filas}</tbody></table></div>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
@@ -378,7 +378,8 @@ function exportarFixtureHTML() {
   .page-header .sub{font-size:.76rem;opacity:.7;margin-top:3px}
   .body{max-width:800px;margin:0 auto;padding:1.25rem}
   h2{font-size:.95rem;font-weight:800;color:#11360E;margin:1.5rem 0 .6rem;padding-bottom:.35rem;border-bottom:3px solid #288024}
-  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(17,54,14,.1);margin-bottom:.5rem}
+  .tw{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(17,54,14,.1);margin-bottom:.5rem;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:340px}
   thead tr{background:#11360E;color:#fff}
   th{padding:9px 8px;font-size:.78rem;font-weight:700;text-align:center}
   td{padding:8px;text-align:center;border-bottom:1px solid rgba(86,175,87,.18);font-size:.86rem}

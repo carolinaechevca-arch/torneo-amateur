@@ -14,8 +14,20 @@ function renderizarCalendario() {
 
   cont.innerHTML = jornadas.map(j => {
     const partidos = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === j));
+    const jugables = partidos.filter(p => !_esDescansa(p));
 
     const filaPartidos = partidos.map(p => {
+      if (_esDescansa(p)) {
+        return `
+          <div class="jornada-partido-fila jornada-partido-descansa">
+            <div class="partido-vs-mini">
+              <i class="bi bi-moon-stars-fill" style="font-size:.85rem"></i>
+              <span class="equipo-mini">${_equipoDescansa(p)}</span>
+              <span class="vs-mini">descansa esta jornada</span>
+            </div>
+          </div>
+        `;
+      }
       const h = horariosActual.find(h => h.partidoId === p.id) || {};
       return `
         <div class="jornada-partido-fila">
@@ -44,7 +56,7 @@ function renderizarCalendario() {
       <div class="jornada-bloque">
         <div class="jornada-bloque-header">
           <span class="jornada-num">Jornada ${j}</span>
-          <span class="jornada-partidos-count">${partidos.length} partido${partidos.length > 1 ? 's' : ''}</span>
+          <span class="jornada-partidos-count">${jugables.length} partido${jugables.length > 1 ? 's' : ''}</span>
         </div>
         ${filaPartidos}
       </div>
