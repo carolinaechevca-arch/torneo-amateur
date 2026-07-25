@@ -1529,9 +1529,17 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 }
 .subtitulo-card:first-child { margin-top: 0; }
 
-/* Acciones colapsables del detalle de equipo ("Gestionar abonos" / "Gestionar jugadores") */
-.accion-colapsable { margin-bottom: 1.25rem; }
-.accion-colapsable:last-child { margin-bottom: 0; }
+/* 4 botones que abren los modales de acción del detalle de equipo
+   (Gestionar abonos / Agregar jugador / Goles y tarjetas / Pagos de jugadores) */
+.acciones-equipo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 700px) {
+  .acciones-equipo-grid { grid-template-columns: 1fr 1fr; }
+}
 
 .btn-accion-equipo {
   display: flex;
@@ -1552,8 +1560,7 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 .btn-accion-equipo:hover  { border-color: var(--c-primary); background: var(--c-surface); }
 .btn-accion-equipo .izq   { display: flex; align-items: center; gap: .6rem; }
 .btn-accion-equipo .icono { color: var(--c-primary); font-size: 1.1rem; }
-.btn-accion-equipo .chevron { color: var(--c-text-muted); transition: transform var(--t); }
-.btn-accion-equipo.abierto .chevron { transform: rotate(180deg); }
+.btn-accion-equipo .chevron { color: var(--c-text-muted); }
 .btn-accion-equipo .contador {
   background: var(--c-surface);
   color: var(--c-text-secondary);
@@ -1564,16 +1571,6 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
   margin-left: .5rem;
 }
 [data-theme="dark"] .btn-accion-equipo .contador { background: rgba(255,255,255,.08); }
-
-.panel-colapsable {
-  background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
-  border-top: none;
-  border-radius: 0 0 var(--radio-s) var(--radio-s);
-  padding: 1.25rem;
-  margin-top: -1px;
-  animation: detalleIn .15s ease;
-}
 
 /* ──────────────────────────────────────────────
    DIÁLOGO DE CONFIRMACIÓN (reemplaza confirm() nativo)
@@ -1662,14 +1659,12 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 /* ──────────────────────────────────────────────
    RESOLUCIONES — constructor (formulario + vista previa)
    ────────────────────────────────────────────── */
+/* La vista previa siempre va debajo del formulario (nunca al lado, en
+   ningún ancho de pantalla) — por eso esto ya no es un grid de 2 columnas. */
 .res-constructor-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.75rem;
-  align-items: start;
-}
-@media (min-width: 1100px) {
-  .res-constructor-grid { grid-template-columns: 1fr 1fr; }
 }
 
 .res-form-subtitulo {
@@ -1732,6 +1727,26 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
   white-space: pre-line;
 }
 
+.res-articulo-fijo-item {
+  background: var(--c-surface);
+  border-radius: var(--radio-s);
+  padding: .75rem .9rem;
+  margin-bottom: .6rem;
+}
+.res-articulo-fijo-check {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  cursor: pointer;
+  margin-bottom: .45rem;
+}
+.res-articulo-fijo-item textarea { resize: vertical; margin-bottom: .45rem; }
+.res-articulo-fijo-inactivo { opacity: .55; }
+.res-articulo-fijo-item textarea:disabled { background: var(--c-surface); cursor: not-allowed; }
+
 .res-mini-form {
   background: var(--c-bg);
   border: 1px dashed var(--c-border);
@@ -1740,7 +1755,7 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
   margin-top: .5rem;
 }
 
-.res-preview-col { position: sticky; top: 1rem; }
+.res-preview-col { max-width: 760px; margin: 0 auto; width: 100%; }
 .res-preview-etiqueta {
   display: flex;
   align-items: center;

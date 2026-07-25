@@ -68,14 +68,42 @@ let _articuloEnConstruccion = null;   // mini-formulario de un artículo variabl
 let _plantillaEditandoId = null;      // plantilla en edición en la pestaña "Plantillas"
 let _pestanaResolucionesActiva = 'nueva';
 
+/* Los 3 artículos de cierre + el Considerando son "fijos": traen un texto por
+   defecto pero se pueden editar u omitir. El único bloque siempre presente y
+   sin checkbox es el Artículo primero (tabla de sanciones), que no vive acá. */
+function _articulosFijosPorDefecto(fechaISO) {
+  return {
+    considerando: { activo: true, texto: 'Que es deber de la comisión atender los asuntos disciplinarios relacionados con todos aquellos jugadores y cuerpo técnico, de acuerdo con las normas establecidas en las reglas del juego.' },
+    apelacion:    { activo: true, texto: 'Contra la presente resolución proceden los recursos de apelación y reposición, en los términos que señala el reglamento y la ley.' },
+    comuniquese:  { activo: true, texto: 'Comuníquese y cúmplase.' },
+    fechaCierre:  { activo: true, texto: _textoFechaCierre(fechaISO), editadoManual: false }
+  };
+}
+
+/* Mismo texto que se mostraba hardcodeado antes de que esto fuera editable —
+   usado tanto para el valor por defecto como para recalcularlo al cambiar la fecha */
+function _textoFechaCierre(fechaISO) {
+  if (!fechaISO) return 'Dado a los ___ días del mes de ___ de ___.';
+  const d = new Date(fechaISO + 'T00:00:00');
+  return `Dado a los ${_diaEnPalabras(d.getDate())} días del mes de ${_MESES[d.getMonth()]} de ${d.getFullYear()}.`;
+}
+
+/* Resoluciones publicadas antes de que existiera este campo no lo tienen guardado;
+   se les arma un equivalente con todo activo para que se vean igual que siempre */
+function _articulosFijosLegacyDefault(res) {
+  return _articulosFijosPorDefecto(res.fecha);
+}
+
 function _crearBorradorVacio() {
+  const fecha = _hoyISO();
   return {
     id: 'RES_' + Date.now(),
     numero: null,
     estado: 'borrador',
-    fecha: _hoyISO(),
+    fecha,
     tablaSanciones: [],
-    articulosVariables: []
+    articulosVariables: [],
+    articulosFijos: _articulosFijosPorDefecto(fecha)
   };
 }
 
@@ -97,6 +125,10 @@ function renderizarResoluciones() {
   if (!_borradorActual) {
     _borradorActual = resolucionesActual.find(r => r.estado === 'borrador') || _crearBorradorVacio();
   }
+  // Borrador guardado antes de que existiera este campo (migración silenciosa)
+  if (!_borradorActual.articulosFijos) {
+    _borradorActual.articulosFijos = _articulosFijosPorDefecto(_borradorActual.fecha);
+  }
   mostrarPestanaResoluciones(_pestanaResolucionesActiva);
   _renderizarConstructorResolucion();
   _renderizarPendientesSancion();
@@ -115,12 +147,18 @@ function _renderizarConstructorResolucion() {
   _poblarSelectPlantillas();
   _renderizarTablaSancionesEditor();
   _renderizarArticulosVariablesEditor();
+  _renderizarArticulosFijosEditor();
   _actualizarVistaPreviaResolucion();
 }
 
 function onCambioFechaResolucion() {
   if (!_borradorActual) return;
   _borradorActual.fecha = document.getElementById('res-fecha')?.value || '';
+  const fc = _borradorActual.articulosFijos.fechaCierre;
+  if (!fc.editadoManual) {
+    fc.texto = _textoFechaCierre(_borradorActual.fecha);
+    _renderizarArticulosFijosEditor();
+  }
   _actualizarVistaPreviaResolucion();
 }
 
@@ -402,6 +440,70 @@ function _htmlMiniFormularioArticulo() {
 }
 
 /* ──────────────────────────────────────────────
+   CONSTRUCTOR — Artículos fijos (Considerando + cierre): traen texto por
+   defecto pero se pueden editar u omitir. El único bloque obligatorio es el
+   Artículo primero (tabla de sanciones), que no pasa por acá.
+   ────────────────────────────────────────────── */
+
+const _ETIQUETAS_ARTICULOS_FIJOS = {
+  considerando: 'Considerando',
+  apelacion:    'Cierre — Apelación y reposición',
+  comuniquese:  'Cierre — Comuníquese y cúmplase',
+  fechaCierre:  'Cierre — Fecha'
+};
+
+function onToggleArticuloFijo(clave) {
+  const item = _borradorActual?.articulosFijos?.[clave];
+  if (!item) return;
+  item.activo = !item.activo;
+  _renderizarArticulosFijosEditor();
+  _actualizarVistaPreviaResolucion();
+}
+
+function onCambioTextoArticuloFijo(clave, valor) {
+  const item = _borradorActual?.articulosFijos?.[clave];
+  if (!item) return;
+  item.texto = valor;
+  if (clave === 'fechaCierre') item.editadoManual = true;
+  _actualizarVistaPreviaResolucion();
+}
+
+function restablecerTextoArticuloFijo(clave) {
+  const item = _borradorActual?.articulosFijos?.[clave];
+  if (!item) return;
+  if (clave === 'fechaCierre') {
+    item.texto = _textoFechaCierre(_borradorActual.fecha);
+    item.editadoManual = false;
+  } else {
+    item.texto = _articulosFijosPorDefecto(_borradorActual.fecha)[clave].texto;
+  }
+  _renderizarArticulosFijosEditor();
+  _actualizarVistaPreviaResolucion();
+}
+
+function _renderizarArticulosFijosEditor() {
+  const cont = document.getElementById('res-articulos-fijos-editor');
+  if (!cont || !_borradorActual) return;
+
+  cont.innerHTML = Object.keys(_ETIQUETAS_ARTICULOS_FIJOS).map(clave => {
+    const item = _borradorActual.articulosFijos[clave];
+    return `
+      <div class="res-articulo-fijo-item ${item.activo ? '' : 'res-articulo-fijo-inactivo'}">
+        <label class="res-articulo-fijo-check">
+          <input type="checkbox" ${item.activo ? 'checked' : ''} onchange="onToggleArticuloFijo('${clave}')">
+          <span>${_ETIQUETAS_ARTICULOS_FIJOS[clave]}</span>
+        </label>
+        <textarea rows="2" class="input-edit" ${item.activo ? '' : 'disabled'}
+          oninput="onCambioTextoArticuloFijo('${clave}', this.value)">${item.texto || ''}</textarea>
+        <button class="btn-secundario btn-xs" onclick="restablecerTextoArticuloFijo('${clave}')" title="Restablecer texto por defecto">
+          <i class="bi bi-arrow-counterclockwise"></i> Restablecer
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ──────────────────────────────────────────────
    VISTA PREVIA EN VIVO (mismo documento se usa para PDF e Histórico)
    ────────────────────────────────────────────── */
 
@@ -427,24 +529,27 @@ function _htmlDocumentoResolucion(res) {
     </tr>
   `).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--c-text-muted)">Sin jugadores agregados aún</td></tr>`;
 
+  const fijos = res.articulosFijos || _articulosFijosLegacyDefault(res);
+
   let ordinalIdx = 1; // 1 = Primero (tabla de sanciones), ya usado arriba
   const articulosVariablesHtml = res.articulosVariables.map(a => {
     ordinalIdx++;
     return _htmlBloqueArticulo(ordinalIdx, a.textoResuelto);
   }).join('');
 
-  const fechaObj = res.fecha ? new Date(res.fecha + 'T00:00:00') : null;
-  const articulosFijosCierre = [
-    'Contra la presente resolución proceden los recursos de apelación y reposición, en los términos que señala el reglamento y la ley.',
-    'Comuníquese y cúmplase.',
-    fechaObj
-      ? `Dado a los <b>${_diaEnPalabras(fechaObj.getDate())}</b> días del mes de <b>${_MESES[fechaObj.getMonth()]}</b> de <b>${fechaObj.getFullYear()}</b>.`
-      : 'Dado a los ___ días del mes de ___ de ___.'
-  ];
-  const articulosFijosHtml = articulosFijosCierre.map(texto => {
-    ordinalIdx++;
-    return _htmlBloqueArticulo(ordinalIdx, texto);
-  }).join('');
+  const articulosFijosHtml = ['apelacion', 'comuniquese', 'fechaCierre']
+    .map(clave => fijos[clave])
+    .filter(item => item && item.activo)
+    .map(item => {
+      ordinalIdx++;
+      return _htmlBloqueArticulo(ordinalIdx, item.texto);
+    }).join('');
+
+  const considerandoHtml = fijos.considerando?.activo ? `
+        <div class="res-doc-considerando">
+          <span class="res-considerando-cab">Considerando</span>
+          ${fijos.considerando.texto}
+        </div>` : '';
 
   return `
     <div class="res-documento">
@@ -455,11 +560,7 @@ function _htmlDocumentoResolucion(res) {
       </div>
       <div class="res-doc-cuerpo">
         <p class="res-doc-intro">Por medio de la cual se resuelven asuntos relacionados con los participantes del torneo:</p>
-        <div class="res-doc-considerando">
-          <span class="res-considerando-cab">Considerando</span>
-          Que es deber de la comisión atender los asuntos disciplinarios relacionados con todos aquellos
-          jugadores y cuerpo técnico, de acuerdo con las normas establecidas en las reglas del juego.
-        </div>
+        ${considerandoHtml}
 
         <div class="res-articulo">
           <div class="res-articulo-cab">
