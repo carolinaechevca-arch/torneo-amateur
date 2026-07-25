@@ -92,6 +92,20 @@ function _migrarCargosTarjetasPorPartido() {
   const precioRoja     = Number(torneoActual.precioRoja) || 0;
   let cambiado = false;
 
+  // Limpieza de huérfanos: cargos de tarjetas cuyo partido (statId) ya no
+  // existe en statsActual — restos de pruebas/ediciones de versiones
+  // anteriores que nunca se borraron solos. Se corre para TODOS los
+  // jugadores, incluso los que ya no tienen ninguna estadística registrada,
+  // así no quedan "cobros fantasma" sin ningún partido real detrás.
+  finanzasJugadoresActual.forEach(entrada => {
+    const antes = entrada.cargos.length;
+    entrada.cargos = entrada.cargos.filter(c => {
+      if (c.origen !== 'tarjetas' || !c.statId) return true; // no es de tarjetas, o es legacy sin statId (se migra más abajo)
+      return statsActual.some(s => s.id === c.statId);
+    });
+    if (entrada.cargos.length !== antes) cambiado = true;
+  });
+
   jugadoresActual.forEach(jugador => {
     const entradasStats    = statsActual.filter(s => s.equipo === jugador.equipo && s.jugador === jugador.nombre);
     const entradaExistente = finanzasJugadoresActual.find(f => f.jugadorId === jugador.id);
