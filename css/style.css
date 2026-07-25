@@ -1506,6 +1506,11 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
   font-size: .85rem;
 }
 .input-edit-xs { max-width: 58px; text-align: center; }
+/* Sin flechitas de subir/bajar: en columnas angostas se comen casi todo el
+   ancho y dejan el número apretado contra el borde */
+.input-edit-xs::-webkit-outer-spin-button,
+.input-edit-xs::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.input-edit-xs[type="number"] { -moz-appearance: textfield; }
 
 /* Fila del selector de equipo (select + botón de renombrar) */
 .selector-equipo-fila {
