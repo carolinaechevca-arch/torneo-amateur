@@ -8,13 +8,11 @@ let _equipoExpandido = null;      // equipo con el panel de detalle abierto
 let _jugadorModalAbierto = null;    // id del jugador con el modal de detalle abierto (o null)
 let _modalEquipoAbierto = null;     // { tipo, equipo } del modal de acción de equipo abierto (o null)
 
-/* Convierte el nombre de un equipo en un id seguro para usar en el DOM */
-function _slugEquipo(equipo) {
-  return String(equipo).replace(/[^a-zA-Z0-9]/g, '_');
-}
-
 /* ──────────────────────────────────────────────
-   TABLA PRINCIPAL DE EQUIPOS
+   SELECTOR DE EQUIPO
+   Un solo flujo: elegís un equipo del <select> y ahí abajo aparece su
+   resumen financiero + las 4 acciones (nada de tabla con todos los
+   equipos listados en "Pendiente").
    ────────────────────────────────────────────── */
 
 function renderizarEquipos() {
@@ -29,55 +27,39 @@ function renderizarEquipos() {
     return;
   }
 
-  const posiciones = calcularClasificacion();
-  const finEquipos = calcularFinanzasEquipos();
+  if (_equipoExpandido && !torneoActual.equipos.includes(_equipoExpandido)) _equipoExpandido = null;
 
-  const filas = torneoActual.equipos.map(equipo => {
-    const pos = posiciones.find(p => p.equipo === equipo) || { pj: 0, pts: 0 };
-    const fin = finEquipos.find(f => f.equipo === equipo) || { estado: 'Pendiente' };
-    const numJugadores = jugadoresActual.filter(j => j.equipo === equipo).length;
-    const equipoJs = equipo.replace(/'/g, "\\'");
-    const abierto = _equipoExpandido === equipo;
-    return `
-      <tr id="eqrow-${_slugEquipo(equipo)}" class="${abierto ? 'fila-equipo-activa' : ''}">
-        <td class="col-equipo">${equipo}</td>
-        <td class="col-num">${numJugadores}</td>
-        <td class="col-num">${pos.pj}</td>
-        <td class="col-num">${pos.pts}</td>
-        <td>${_botonEstadoEquipo(equipoJs, fin.estado, abierto)}</td>
-        <td class="col-acciones-eq">
-          <button class="btn-secundario btn-xs" onclick="iniciarRenombrarEquipo('${equipoJs}')" title="Renombrar equipo">
-            <i class="bi bi-pencil-fill"></i>
-          </button>
-        </td>
-      </tr>`;
-  }).join('');
+  const opciones = torneoActual.equipos
+    .map(e => `<option value="${e.replace(/"/g, '&quot;')}" ${e === _equipoExpandido ? 'selected' : ''}>${e}</option>`)
+    .join('');
 
   cont.innerHTML = `
-    <div class="tabla-wrapper">
-      <table class="tabla-datos">
-        <thead>
-          <tr>
-            <th class="col-equipo">Equipo</th>
-            <th title="Jugadores registrados">Jugadores</th>
-            <th title="Partidos jugados">PJ</th>
-            <th title="Puntos">Pts</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-      </table>
+    <div class="selector-equipo-fila">
+      <div class="form-grupo" style="max-width:320px;margin-bottom:0">
+        <label for="selector-equipo">Equipo</label>
+        <select id="selector-equipo" onchange="onCambioEquipoSeleccionado()">
+          <option value="">Seleccionar equipo...</option>
+          ${opciones}
+        </select>
+      </div>
+      <button class="btn-secundario btn-pequeño" onclick="iniciarRenombrarEquipo()" title="Renombrar equipo" ${_equipoExpandido ? '' : 'disabled'}>
+        <i class="bi bi-pencil-fill"></i> Renombrar
+      </button>
     </div>
   `;
 
-  if (_equipoExpandido && torneoActual.equipos.includes(_equipoExpandido)) {
+  if (_equipoExpandido) {
     renderizarDetalleEquipo(_equipoExpandido);
   } else {
-    _equipoExpandido = null;
     const panel = document.getElementById('equipo-detalle-panel');
     if (panel) panel.innerHTML = '';
   }
+}
+
+function onCambioEquipoSeleccionado() {
+  _equipoExpandido = document.getElementById('selector-equipo')?.value || null;
+  _cerrarModalEquipo();
+  renderizarEquipos();
 }
 
 /* Actualiza las 4 tarjetas de resumen financiero global (arriba de la tabla) */
@@ -93,14 +75,6 @@ function _actualizarResumenFinanzas() {
   _setText('fin-jugadores-pendientes', jugs.filter(j => !j.pagado).length);
 }
 
-/* Pill de estado financiero del equipo — es un botón: tocarlo abre/cierra su panel de gestión */
-function _botonEstadoEquipo(equipoJs, estado, abierto) {
-  const clase = estado === 'Pagado' ? 'fin-badge-pagado' : (estado === 'Parcial' ? 'fin-badge-parcial' : 'fin-badge-pendiente');
-  return `<button class="fin-badge fin-badge-clickable ${clase}" onclick="toggleDetalleEquipo('${equipoJs}')" title="Toca para gestionar jugadores y finanzas de este equipo">
-    ${estado} <i class="bi bi-chevron-${abierto ? 'up' : 'down'}" style="font-size:.65em;margin-left:.25em"></i>
-  </button>`;
-}
-
 /* Pill de estado de un cargo (tarjetas o resolución) — tocarlo alterna Pagado/Pendiente directamente */
 function _botonEstadoPago(jugadorId, cargoId, pagado) {
   const clase = pagado ? 'fin-badge-pagado' : 'fin-badge-pendiente';
@@ -109,9 +83,9 @@ function _botonEstadoPago(jugadorId, cargoId, pagado) {
   </button>`;
 }
 
-/* Expande o colapsa el panel de gestión de un equipo (jugadores + finanzas) */
-function toggleDetalleEquipo(equipo) {
-  _equipoExpandido = (_equipoExpandido === equipo) ? null : equipo;
+/* Vuelve al placeholder "Seleccionar equipo..." del selector */
+function cerrarDetalleEquipo() {
+  _equipoExpandido = null;
   _cerrarModalEquipo();
   renderizarEquipos();
 }
@@ -136,7 +110,7 @@ function renderizarDetalleEquipo(equipo) {
     <div class="equipo-detalle-panel">
       <div class="seccion-header">
         <h3><i class="bi bi-shield-fill"></i> ${equipo}</h3>
-        <button class="btn-secundario btn-pequeño" onclick="toggleDetalleEquipo('${equipoJs}')"><i class="bi bi-x-lg"></i> Cerrar</button>
+        <button class="btn-secundario btn-pequeño" onclick="cerrarDetalleEquipo()"><i class="bi bi-x-lg"></i> Cerrar</button>
       </div>
 
       ${_htmlResumenFinancieroEquipo(eq)}
@@ -750,18 +724,21 @@ function _refrescarModalJugadorPorEquipoNombre(equipo, nombre) {
    RENOMBRAR EQUIPO
    ────────────────────────────────────────────── */
 
-function iniciarRenombrarEquipo(equipo) {
-  const row = document.getElementById(`eqrow-${_slugEquipo(equipo)}`);
-  if (!row) return;
+function iniciarRenombrarEquipo() {
+  const equipo = _equipoExpandido;
+  if (!equipo) return;
+  const cont = document.getElementById('tabla-equipos-container');
+  if (!cont) return;
   const equipoJs = equipo.replace(/'/g, "\\'");
-  const celda = row.querySelector('.col-equipo');
-  if (!celda) return;
 
-  celda.innerHTML = `
-    <div style="display:flex; gap:.4rem; align-items:center;">
-      <input type="text" id="input-renombrar-equipo" value="${equipo.replace(/"/g, '&quot;')}" maxlength="30" class="input-edit" style="flex:1">
-      <button class="btn-principal btn-xs" onclick="guardarRenombreEquipo('${equipoJs}')" title="Guardar"><i class="bi bi-check-lg"></i></button>
-      <button class="btn-secundario btn-xs" onclick="renderizarEquipos()" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+  cont.innerHTML = `
+    <div class="selector-equipo-fila">
+      <div class="form-grupo" style="max-width:320px;margin-bottom:0">
+        <label for="input-renombrar-equipo">Nuevo nombre del equipo</label>
+        <input type="text" id="input-renombrar-equipo" value="${equipo.replace(/"/g, '&quot;')}" maxlength="30" class="input-edit">
+      </div>
+      <button class="btn-principal btn-pequeño" onclick="guardarRenombreEquipo('${equipoJs}')" title="Guardar"><i class="bi bi-check-lg"></i></button>
+      <button class="btn-secundario btn-pequeño" onclick="renderizarEquipos()" title="Cancelar"><i class="bi bi-x-lg"></i></button>
     </div>
   `;
   const input = document.getElementById('input-renombrar-equipo');

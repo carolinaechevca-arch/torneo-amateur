@@ -1507,12 +1507,23 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 }
 .input-edit-xs { max-width: 58px; text-align: center; }
 
-/* Columna de acciones de la tabla de Equipos (varios botones, ancho libre) */
-.col-acciones-eq { white-space: nowrap; text-align: right; }
-.col-acciones-eq .btn-secundario { margin-left: .25rem; }
-
-/* Resalta la fila del equipo cuyo panel de gestión está abierto */
-.fila-equipo-activa td { background: var(--c-surface); }
+/* Fila del selector de equipo (select + botón de renombrar) */
+.selector-equipo-fila {
+  display: flex;
+  align-items: flex-end;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+#selector-equipo {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radio-s);
+  background: var(--c-bg);
+  color: var(--c-text-primary);
+  font-family: inherit;
+  font-size: .9rem;
+}
 
 /* Panel de gestión unificado de un equipo (finanzas + plantilla) */
 .equipo-detalle-panel { margin-top: 1.25rem; animation: detalleIn .18s ease; }
