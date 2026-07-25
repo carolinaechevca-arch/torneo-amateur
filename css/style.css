@@ -865,7 +865,7 @@ label   { font-weight: 600; }
 .puesto-2 { background: var(--c-primary-dark);  color: var(--c-text-on-dark); }
 .puesto-3 { background: var(--c-primary-light); color: var(--c-text-on-dark); }
 .top3-medal  { font-size: 1.3rem; }
-.top3-nombre { flex: 1; font-weight: 600; }
+.top3-nombre { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: break-word; }
 .top3-pts    { font-size: .88rem; opacity: .9; font-weight: 500; }
 
 /* Próximos partidos */
@@ -886,7 +886,7 @@ label   { font-weight: 600; }
   font-weight: 700;
   white-space: nowrap;
 }
-.proximo-equipos  { flex: 1; font-size: .88rem; color: var(--c-text-primary); font-weight: 500; }
+.proximo-equipos  { flex: 1; min-width: 0; font-size: .88rem; color: var(--c-text-primary); font-weight: 500; overflow-wrap: break-word; }
 .proximo-equipos span { color: var(--c-text-muted); margin: 0 .3rem; }
 .proximo-fecha    { font-size: .78rem; color: var(--c-text-muted); white-space: nowrap; font-weight: 400; }
 .proximo-descansa { opacity: .6; }
@@ -931,10 +931,10 @@ label   { font-weight: 600; }
   align-items: center;
   gap: .75rem;
 }
-.partido-equipo   { flex: 1; }
+.partido-equipo   { flex: 1; min-width: 0; }
 .partido-local    { text-align: right; }
 .partido-visitante { text-align: left; }
-.equipo-nombre    { font-weight: 600; font-size: 1rem; color: var(--c-text-primary); }
+.equipo-nombre    { font-weight: 600; font-size: 1rem; color: var(--c-text-primary); overflow-wrap: break-word; }
 
 .partido-marcador {
   display: flex;
@@ -1179,7 +1179,7 @@ label   { font-weight: 600; }
   font-weight: 600;
   color: var(--c-text-primary);
 }
-.equipo-mini { flex: 1; text-align: center; font-size: .9rem; }
+.equipo-mini { flex: 1; min-width: 0; text-align: center; font-size: .9rem; overflow-wrap: break-word; }
 .vs-mini     { color: var(--c-text-muted); font-size: .82rem; font-weight: 500; }
 
 .horario-inputs {
