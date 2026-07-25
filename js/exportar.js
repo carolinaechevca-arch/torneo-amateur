@@ -351,7 +351,7 @@ function exportarFixtureHTML() {
       const partidos = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === j));
       const filas = partidos.map(p => {
         if (_esDescansa(p)) {
-          return `<tr><td colspan="3" style="text-align:left;color:#888">${_equipoDescansa(p)} — descansa</td><td>–</td></tr>`;
+          return `<tr><td colspan="2" style="text-align:left;color:#888">${_equipoDescansa(p)} — descansa</td><td>–</td></tr>`;
         }
         const h = horariosActual.find(h => h.partidoId === p.id) || {};
         const fechaP = h.fecha ? new Date(h.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
