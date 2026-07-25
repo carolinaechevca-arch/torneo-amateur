@@ -84,18 +84,17 @@ function _obtenerEntradaFinanzasJugador(jugadorId, crear) {
   return entrada;
 }
 
-/* Monto de tarjetas de un jugador, partido por partido: si en un mismo
-   partido llegó a 2 amarillas (expulsión por doble amarilla) se cobra solo
-   el precio de la roja, sin sumar además el precio de esas 2 amarillas —
-   la expulsión ya "absorbe" la sanción. Una roja directa (sin 2 amarillas
-   en esa misma entrada) sí se cobra aparte de cualquier amarilla suelta de
-   otro partido. Necesita las entradas por separado (no el total agregado)
-   para saber cuáles amarillas coincidieron con cuál roja. */
-function _montoTarjetasDeJugador(jugador) {
-  const precioAmarilla = Number(torneoActual?.precioAmarilla) || 0;
-  const precioRoja     = Number(torneoActual?.precioRoja) || 0;
-  const entradas = statsActual.filter(s => s.equipo === jugador.equipo && s.jugador === jugador.nombre);
-
+/* Monto de tarjetas a partir de una lista de entradas de stats ya filtrada,
+   partido por partido: si en un mismo partido llegó a 2 amarillas (expulsión
+   por doble amarilla) se cobra solo el precio de la roja, sin sumar además
+   el precio de esas 2 amarillas — la expulsión ya "absorbe" la sanción. Una
+   roja directa (sin 2 amarillas en esa misma entrada) sí se cobra aparte de
+   cualquier amarilla suelta de otro partido. Se necesitan las entradas por
+   separado (no el total agregado) para saber cuáles amarillas coincidieron
+   con cuál roja. Recibe las entradas ya armadas (en vez de leerlas siempre de
+   statsActual) para poder simular "¿cuánto quedaría si edito esta entrada?"
+   antes de guardar el cambio. */
+function _calcularMontoTarjetas(entradas, precioAmarilla, precioRoja) {
   let totalAmarillas = 0, totalRojas = 0, monto = 0;
   entradas.forEach(s => {
     const am = Number(s.amarillas) || 0;
@@ -104,8 +103,14 @@ function _montoTarjetasDeJugador(jugador) {
     totalRojas += ro;
     monto += am >= 2 ? precioRoja : (am * precioAmarilla + ro * precioRoja);
   });
-
   return { monto, totalAmarillas, totalRojas };
+}
+
+function _montoTarjetasDeJugador(jugador) {
+  const precioAmarilla = Number(torneoActual?.precioAmarilla) || 0;
+  const precioRoja     = Number(torneoActual?.precioRoja) || 0;
+  const entradas = statsActual.filter(s => s.equipo === jugador.equipo && s.jugador === jugador.nombre);
+  return _calcularMontoTarjetas(entradas, precioAmarilla, precioRoja);
 }
 
 function _cargoTarjetasDeJugador(jugador) {
@@ -271,6 +276,48 @@ async function toggleCargoJugador(jugadorId, cargoId) {
     renderizarEquipos();
     _refrescarModalJugadorSiAbierto(jugadorId);
   }
+}
+
+/* Diálogo de 3 opciones para cuando editar una tarjeta cambia el cobro de un
+   jugador que ya tenía un pago registrado para ese cargo. "Sumar" deja el pago
+   tal cual (se sigue contando a favor del monto nuevo, igual que hoy); "Descartar"
+   resetea lo cubierto a $0, así el monto nuevo completo vuelve a verse pendiente.
+   Devuelve 'sumar' | 'descartar' | null (canceló). */
+function confirmarAjusteCobroTarjetas(nombreJugador, montoAntes, montoDespues) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="cat-titulo">
+        <h3 class="confirm-titulo" id="cat-titulo">El cobro de ${nombreJugador} cambia</h3>
+        <p class="confirm-mensaje">
+          Este jugador ya tenía un pago registrado por tarjetas. Editar esta entrada cambia su cobro
+          de ${_formatoMoneda(montoAntes)} a ${_formatoMoneda(montoDespues)}. ¿Qué hacemos con el pago ya registrado?
+        </p>
+        <div class="confirm-acciones">
+          <button class="btn-secundario" id="cat-btn-cancelar">Cancelar</button>
+          <button class="btn-secundario" id="cat-btn-descartar">Descartar el pago anterior</button>
+          <button class="btn-principal"  id="cat-btn-sumar">Mantenerlo (sumar la diferencia)</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const cerrar = (resultado) => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+      resolve(resultado);
+    };
+    const onKeydown = (e) => { if (e.key === 'Escape') cerrar(null); };
+
+    overlay.querySelector('#cat-btn-cancelar').onclick  = () => cerrar(null);
+    overlay.querySelector('#cat-btn-descartar').onclick = () => cerrar('descartar');
+    overlay.querySelector('#cat-btn-sumar').onclick     = () => cerrar('sumar');
+    overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(null); });
+    document.addEventListener('keydown', onKeydown);
+
+    overlay.querySelector('#cat-btn-sumar')?.focus();
+  });
 }
 
 /* ──────────────────────────────────────────────

@@ -1635,6 +1635,7 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 .confirm-acciones {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: .75rem;
 }
 .confirm-acciones button {

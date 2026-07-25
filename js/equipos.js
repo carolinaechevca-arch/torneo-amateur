@@ -575,8 +575,11 @@ function iniciarEditarStatEntry(statId) {
 }
 
 /* Guarda la corrección de una entrada, validando contra el marcador real del partido
-   (si tiene uno asociado), sin contar el goleo de esta misma entrada como "ya registrado" */
-function guardarEdicionStatEntry(statId) {
+   (si tiene uno asociado), sin contar el goleo de esta misma entrada como "ya registrado".
+   Si el cambio de tarjetas altera el cobro de un jugador que ya tenía un pago
+   registrado, primero pregunta si ese pago cuenta a favor del nuevo monto
+   ("sumar") o si se descarta y el nuevo monto queda pendiente entero. */
+async function guardarEdicionStatEntry(statId) {
   const s = statsActual.find(x => x.id === statId);
   if (!s) return;
 
@@ -594,6 +597,30 @@ function guardarEdicionStatEntry(statId) {
     if (otrosGoles + goles > maxGoles) {
       mostrarError(`El equipo anotó ${maxGoles} gol(es) en este partido. Entre los demás jugadores ya hay ${otrosGoles}; para este jugador puedes poner hasta ${Math.max(0, maxGoles - otrosGoles)}.`);
       return;
+    }
+  }
+
+  const jugador = jugadoresActual.find(j => j.equipo === s.equipo && j.nombre === s.jugador);
+  if (jugador && torneoActual) {
+    const precioAmarilla = Number(torneoActual.precioAmarilla) || 0;
+    const precioRoja     = Number(torneoActual.precioRoja) || 0;
+    const entradas       = statsActual.filter(x => x.equipo === s.equipo && x.jugador === s.jugador);
+    const entradasNuevas = entradas.map(x => x.id === statId ? { ...x, amarillas, rojas } : x);
+
+    const montoAntes   = _calcularMontoTarjetas(entradas, precioAmarilla, precioRoja).monto;
+    const montoDespues = _calcularMontoTarjetas(entradasNuevas, precioAmarilla, precioRoja).monto;
+
+    const entradaFin     = _obtenerEntradaFinanzasJugador(jugador.id, false);
+    const cargoTarjetas  = entradaFin?.cargos.find(c => c.origen === 'tarjetas');
+    const montoCubierto  = cargoTarjetas ? Number(cargoTarjetas.montoCubierto) || 0 : 0;
+
+    if (montoCubierto > 0 && montoDespues !== montoAntes) {
+      const eleccion = await confirmarAjusteCobroTarjetas(jugador.nombre, montoAntes, montoDespues);
+      if (eleccion === null) return; // canceló: no se guarda el cambio
+      if (eleccion === 'descartar') {
+        cargoTarjetas.montoCubierto = 0;
+        guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
+      }
     }
   }
 
@@ -717,7 +744,9 @@ function _refrescarModalJugadorSiAbierto(jugadorId) {
    resuelve el id y refresca el historial del modal si está abierto para él */
 function _refrescarModalJugadorPorEquipoNombre(equipo, nombre) {
   const jugador = jugadoresActual.find(j => j.equipo === equipo && j.nombre === nombre);
-  if (jugador && _jugadorModalAbierto === jugador.id) _renderHistorialStatsJugador(jugador.id);
+  if (!jugador || _jugadorModalAbierto !== jugador.id) return;
+  _renderHistorialStatsJugador(jugador.id);
+  _renderizarCargosModalJugador(jugador.id); // el cobro de tarjetas depende de goles/tarjetas, así que también debe refrescarse
 }
 
 /* ──────────────────────────────────────────────
