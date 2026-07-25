@@ -210,6 +210,9 @@
       <li><button class="sidebar-item activo" data-seccion="sec-inicio" onclick="mostrarSeccion('sec-inicio')" role="tab">
         <i class="bi bi-house-door-fill"></i><span>Inicio</span>
       </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-equipos" onclick="mostrarSeccion('sec-equipos')" role="tab">
+        <i class="bi bi-shield-fill"></i><span>Equipos</span>
+      </button></li>
       <li><button class="sidebar-item" data-seccion="sec-fixture" onclick="mostrarSeccion('sec-fixture')" role="tab">
         <i class="bi bi-table"></i><span>Fixture</span>
       </button></li>
@@ -224,12 +227,6 @@
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">
         <i class="bi bi-graph-up-arrow"></i><span>Estadísticas</span>
-      </button></li>
-      <li><button class="sidebar-item" data-seccion="sec-jugadores" onclick="mostrarSeccion('sec-jugadores')">
-        <i class="bi bi-people-fill"></i><span>Jugadores</span>
-      </button></li>
-      <li><button class="sidebar-item" data-seccion="sec-finanzas" onclick="mostrarSeccion('sec-finanzas')" role="tab">
-        <i class="bi bi-cash-coin"></i><span>Finanzas</span>
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-exportar" onclick="mostrarSeccion('sec-exportar')" role="tab">
         <i class="bi bi-upload"></i><span>Exportar</span>
@@ -307,6 +304,39 @@
         </a>
         <p id="link-sheet-info" class="sin-datos">Crea un torneo para ver el link</p>
       </div>
+    </section>
+
+    <!-- ══ SECCIÓN: EQUIPOS ═════════════════════════ -->
+    <section id="sec-equipos" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2><i class="bi bi-shield-fill"></i> Gestionar Equipos</h2>
+      </div>
+      <p class="info-texto">Aquí administras todo por equipo: nombre, plantilla de jugadores e inscripción/multas. Toca el estado de un equipo (o de un jugador) para gestionarlo.</p>
+
+      <div class="cards-grid">
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-recaudado">–</div>
+          <div class="card-stat-label">Recaudado</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-pendiente">–</div>
+          <div class="card-stat-label">Pendiente</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-equipos-pendientes">–</div>
+          <div class="card-stat-label">Equipos con saldo</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-jugadores-pendientes">–</div>
+          <div class="card-stat-label">Jugadores sin pagar</div>
+        </div>
+      </div>
+
+      <div id="tabla-equipos-container" style="margin-top:1.25rem">
+        <p class="sin-datos">Crea un torneo para gestionar los equipos.</p>
+      </div>
+
+      <div id="equipo-detalle-panel"></div>
     </section>
 
     <!-- ══ SECCIÓN: RESULTADOS ══════════════════════ -->
@@ -536,83 +566,6 @@
       </div>
     </section>
 
-    <!-- ══ SECCIÓN: JUGADORES ════════════════════════ -->
-    <section id="sec-jugadores" class="seccion oculto" role="tabpanel">
-      <div class="seccion-header">
-        <h2><i class="bi bi-people-fill"></i> Gestión de Jugadores</h2>
-      </div>
-
-      <div class="form-grupo" style="max-width:320px;margin-bottom:1.25rem">
-        <label for="gestion-equipo">Equipo</label>
-        <select id="gestion-equipo" onchange="renderizarJugadores()">
-          <option value="">Seleccionar equipo...</option>
-        </select>
-      </div>
-
-      <div id="lista-jugadores">
-        <p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>
-      </div>
-
-      <div id="form-agregar-jugador" class="oculto" style="margin-top:1.5rem">
-        <h3 style="font-size:.95rem;margin-bottom:.75rem;font-weight:700"><i class="bi bi-person-plus-fill"></i> Agregar jugador</h3>
-        <div class="form-fila">
-          <div class="form-grupo">
-            <label for="nuevo-jugador-nombre">Nombre *</label>
-            <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
-          </div>
-          <div class="form-grupo" style="max-width:100px">
-            <label for="nuevo-jugador-camisa"># Camisa</label>
-            <input type="number" id="nuevo-jugador-camisa" placeholder="Ej: 10" min="1" max="99">
-          </div>
-          <div class="form-grupo">
-            <label for="nuevo-jugador-cedula">Cédula</label>
-            <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
-          </div>
-          <div class="form-grupo">
-            <label for="nuevo-jugador-celular">Celular</label>
-            <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
-          </div>
-        </div>
-        <button class="btn-principal btn-pequeño" onclick="guardarJugadorForm()"><i class="bi bi-person-plus-fill"></i> Agregar jugador</button>
-      </div>
-    </section>
-
-    <!-- ══ SECCIÓN: FINANZAS ═════════════════════════ -->
-    <section id="sec-finanzas" class="seccion oculto" role="tabpanel">
-      <div class="seccion-header">
-        <h2><i class="bi bi-cash-coin"></i> Finanzas</h2>
-      </div>
-
-      <div class="cards-grid">
-        <div class="card-stat">
-          <div class="card-stat-num" id="fin-recaudado">–</div>
-          <div class="card-stat-label">Recaudado</div>
-        </div>
-        <div class="card-stat">
-          <div class="card-stat-num" id="fin-pendiente">–</div>
-          <div class="card-stat-label">Pendiente</div>
-        </div>
-        <div class="card-stat">
-          <div class="card-stat-num" id="fin-equipos-pendientes">–</div>
-          <div class="card-stat-label">Equipos con saldo</div>
-        </div>
-        <div class="card-stat">
-          <div class="card-stat-num" id="fin-jugadores-pendientes">–</div>
-          <div class="card-stat-label">Jugadores sin pagar</div>
-        </div>
-      </div>
-
-      <div class="seccion-header" style="margin-top:1.5rem">
-        <h3><i class="bi bi-shield-fill"></i> Inscripción por equipo</h3>
-        <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-finanzas-equipos-container')"><i class="bi bi-camera-fill"></i> Imagen</button>
-      </div>
-      <div id="tabla-finanzas-equipos-container">
-        <p class="sin-datos">Crea un torneo para ver Finanzas.</p>
-      </div>
-
-      <div id="finanzas-detalle-equipo" class="oculto" style="margin-top:1.5rem"></div>
-    </section>
-
   </main>
 
 
@@ -640,6 +593,7 @@
 <script src="js/auth.js"></script>
 <script src="js/sheets.js"></script>
 <script src="js/torneo.js"></script>
+<script src="js/equipos.js"></script>
 <script src="js/resultados.js"></script>
 <script src="js/posiciones.js"></script>
 <script src="js/estadisticas.js"></script>

@@ -113,6 +113,7 @@ function cargarDatosApp() {
   historialActual = cargarHistorialLocal();
   finanzasEquiposActual   = cargarFinanzasEquiposLocal();
   finanzasJugadoresActual = cargarFinanzasJugadoresLocal();
+  _asegurarIdsStats();
 
   if (!torneoActual) return;
 
@@ -128,7 +129,7 @@ function cargarDatosApp() {
   renderizarEstadisticas();
   renderizarCalendario();
   renderizarHistorial();
-  _poblarEquiposJugadores();
+  renderizarEquipos();
 
   // Jornada actual: primera con partidos pendientes
   jornadaViendo = calcularJornadaActual();
@@ -627,13 +628,12 @@ function mostrarSeccion(seccionId) {
   }
 
   // Renderizar la sección según sea necesaria
+  if (seccionId === 'sec-equipos')     renderizarEquipos();
   if (seccionId === 'sec-resultados')  renderizarResultados(jornadaViendo);
   if (seccionId === 'sec-posiciones')  renderizarPosiciones();
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
   if (seccionId === 'sec-fixture')     renderizarFixture();
-  if (seccionId === 'sec-jugadores')   { _poblarEquiposJugadores(); renderizarJugadores(); }
-  if (seccionId === 'sec-finanzas')    renderizarFinanzas();
 }
 
 /* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */
@@ -697,21 +697,48 @@ function ocultarCarga() {
   document.getElementById('overlay-carga')?.classList.add('oculto');
 }
 
+/* Muestra un diálogo de confirmación personalizado (reemplaza confirm() nativo).
+   Devuelve una Promise<boolean>: true si el usuario confirma, false si cancela o cierra. */
+function confirmarAccion({ titulo = '¿Estás seguro?', mensaje = '', textoConfirmar = 'Confirmar', peligro = true } = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-titulo">
+        <h3 class="confirm-titulo" id="confirm-titulo">${titulo}</h3>
+        <p class="confirm-mensaje">${mensaje}</p>
+        <div class="confirm-acciones">
+          <button class="btn-secundario" id="confirm-btn-cancelar">Cancelar</button>
+          <button class="${peligro ? 'btn-peligro' : 'btn-principal'}" id="confirm-btn-aceptar">${textoConfirmar}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const cerrar = (resultado) => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+      resolve(resultado);
+    };
+    const onKeydown = (e) => {
+      if (e.key === 'Escape') cerrar(false);
+      if (e.key === 'Enter')  cerrar(true);
+    };
+
+    overlay.querySelector('#confirm-btn-cancelar').onclick = () => cerrar(false);
+    overlay.querySelector('#confirm-btn-aceptar').onclick  = () => cerrar(true);
+    overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(false); });
+    document.addEventListener('keydown', onKeydown);
+
+    overlay.querySelector('#confirm-btn-aceptar')?.focus();
+  });
+}
+
 /* ──────────────────────────────────────────────
-   GESTIÓN DE JUGADORES POR EQUIPO
+   JUGADORES — utilidades compartidas
+   (el CRUD de plantilla vive en equipos.js, dentro del panel unificado
+   de gestión por equipo)
    ────────────────────────────────────────────── */
-
-function _poblarEquiposJugadores() {
-  const sel = document.getElementById('gestion-equipo');
-  if (!sel || !torneoActual) return;
-  sel.innerHTML = '<option value="">Seleccionar equipo...</option>' +
-    torneoActual.equipos.map(e => `<option value="${e}">${e}</option>`).join('');
-}
-
-/* Navega a la sección de gestión de jugadores */
-function abrirModalPlantilla() {
-  mostrarSeccion('sec-jugadores');
-}
 
 /* Agrega un jugador al equipo. Devuelve true si tuvo éxito. */
 function agregarJugador(equipo, nombre, cedula, celular, numeroCamisa) {
@@ -733,23 +760,6 @@ function agregarJugador(equipo, nombre, cedula, celular, numeroCamisa) {
   return true;
 }
 
-/* Guarda el jugador desde el formulario del modal */
-function guardarJugadorForm() {
-  const equipo      = document.getElementById('gestion-equipo')?.value;
-  const nombre      = document.getElementById('nuevo-jugador-nombre')?.value;
-  const camisa      = document.getElementById('nuevo-jugador-camisa')?.value;
-  const cedula      = document.getElementById('nuevo-jugador-cedula')?.value;
-  const celular     = document.getElementById('nuevo-jugador-celular')?.value;
-  if (!equipo) { mostrarError('Selecciona un equipo primero.'); return; }
-  if (agregarJugador(equipo, nombre, cedula, celular, camisa)) {
-    ['nuevo-jugador-nombre','nuevo-jugador-camisa','nuevo-jugador-cedula','nuevo-jugador-celular'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    renderizarJugadores();
-    mostrarExito(`Jugador registrado en ${equipo}`);
-  }
-}
-
 /* Devuelve los totales de estadísticas de un jugador calculados desde statsActual */
 function _statsJugador(equipo, nombre) {
   return statsActual
@@ -759,126 +769,6 @@ function _statsJugador(equipo, nombre) {
       amarillas: acc.amarillas + (Number(s.amarillas) || 0),
       rojas:     acc.rojas     + (Number(s.rojas)     || 0)
     }), { goles: 0, amarillas: 0, rojas: 0 });
-}
-
-/* Reemplaza todas las entradas de un jugador en statsActual con un único total corregido */
-function _corregirStatsJugador(equipo, nombreAnterior, nombreNuevo, goles, amarillas, rojas) {
-  statsActual = statsActual.filter(s => !(s.equipo === equipo && s.jugador === nombreAnterior));
-  if (goles > 0 || amarillas > 0 || rojas > 0) {
-    statsActual.push({ jornada: 0, partidoId: 'CORR', equipo, jugador: nombreNuevo, goles, amarillas, rojas });
-  }
-  guardarStatsLocal(statsActual);
-}
-
-/* Renderiza la lista de jugadores con sus estadísticas, ordenados por goles desc */
-function renderizarJugadores() {
-  const equipo = document.getElementById('gestion-equipo')?.value;
-  const lista  = document.getElementById('lista-jugadores');
-  const form   = document.getElementById('form-agregar-jugador');
-  if (!lista) return;
-  if (form) form.classList.toggle('oculto', !equipo);
-  if (!equipo) {
-    lista.innerHTML = '<p class="sin-datos">Selecciona un equipo para ver sus jugadores.</p>';
-    return;
-  }
-
-  // Enriquecer cada jugador con sus totales y ordenar por goles desc
-  const jug = jugadoresActual
-    .filter(j => j.equipo === equipo)
-    .map(j => ({ ...j, ..._statsJugador(j.equipo, j.nombre) }))
-    .sort((a, b) => b.goles - a.goles || a.nombre.localeCompare(b.nombre));
-
-  if (jug.length === 0) {
-    lista.innerHTML = '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>';
-    return;
-  }
-
-  lista.innerHTML = `<div class="tabla-wrapper"><table class="tabla-datos tabla-compacta">
-    <thead>
-      <tr>
-        <th title="N° de camisa">#</th>
-        <th>Nombre</th>
-        <th>Cédula</th>
-        <th>Celular</th>
-        <th title="Goles"><i class="bi bi-award-fill"></i></th>
-        <th title="Amarillas"><i class="bi bi-square-fill" style="color:#D4820A"></i></th>
-        <th title="Rojas"><i class="bi bi-square-fill" style="color:#C0392B"></i></th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>${jug.map(j => `
-      <tr id="jrow-${j.id}">
-        <td class="col-camisa">${j.numeroCamisa || '–'}</td>
-        <td><strong>${j.nombre}</strong></td>
-        <td>${j.cedula || '–'}</td>
-        <td>${j.celular || '–'}</td>
-        <td class="col-num">${j.goles}</td>
-        <td class="col-num">${j.amarillas}</td>
-        <td class="col-num">${j.rojas}</td>
-        <td class="col-acciones">
-          <button class="btn-secundario btn-xs" onclick="editarJugador('${j.id}')" title="Editar"><i class="bi bi-pencil-fill"></i></button>
-          <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
-        </td>
-      </tr>`).join('')}
-    </tbody>
-  </table></div>`;
-}
-
-/* Pone una fila en modo edición inline (datos personales + estadísticas) */
-function editarJugador(id) {
-  const j = jugadoresActual.find(j => j.id === id);
-  if (!j) return;
-  const st  = _statsJugador(j.equipo, j.nombre);
-  const row = document.getElementById(`jrow-${id}`);
-  if (!row) return;
-  row.innerHTML = `
-    <td><input type="number" id="ec-${id}"   value="${j.numeroCamisa||''}" min="1" max="99"  class="input-edit input-edit-xs" placeholder="#"></td>
-    <td><input type="text"   id="en-${id}"   value="${j.nombre}"           maxlength="50"    class="input-edit" required></td>
-    <td><input type="text"   id="eced-${id}" value="${j.cedula||''}"       maxlength="20"    class="input-edit"></td>
-    <td><input type="tel"    id="ecel-${id}" value="${j.celular||''}"      maxlength="15"    class="input-edit"></td>
-    <td><input type="number" id="eg-${id}"   value="${st.goles}"     min="0" max="999"       class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="ea-${id}"   value="${st.amarillas}" min="0" max="999"       class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="er-${id}"   value="${st.rojas}"     min="0" max="999"       class="input-edit input-edit-xs"></td>
-    <td class="col-acciones">
-      <button class="btn-principal  btn-xs" onclick="guardarEdicionJugador('${id}')"><i class="bi bi-check-lg"></i></button>
-      <button class="btn-secundario btn-xs" onclick="renderizarJugadores()"><i class="bi bi-x-lg"></i></button>
-    </td>`;
-  document.getElementById(`en-${id}`)?.focus();
-}
-
-/* Guarda los cambios de una edición inline (datos + estadísticas) */
-function guardarEdicionJugador(id) {
-  const idx = jugadoresActual.findIndex(j => j.id === id);
-  if (idx === -1) return;
-  const j      = jugadoresActual[idx];
-  const nombre = document.getElementById(`en-${id}`)?.value?.trim();
-  if (!nombre) { mostrarError('El nombre es obligatorio.'); return; }
-
-  const goles     = Math.max(0, parseInt(document.getElementById(`eg-${id}`)?.value || 0));
-  const amarillas = Math.max(0, parseInt(document.getElementById(`ea-${id}`)?.value || 0));
-  const rojas     = Math.max(0, parseInt(document.getElementById(`er-${id}`)?.value || 0));
-
-  jugadoresActual[idx] = {
-    ...j,
-    nombre,
-    numeroCamisa: document.getElementById(`ec-${id}`)?.value?.trim()   || '',
-    cedula:       document.getElementById(`eced-${id}`)?.value?.trim() || '',
-    celular:      document.getElementById(`ecel-${id}`)?.value?.trim() || ''
-  };
-  guardarJugadoresLocal(jugadoresActual);
-
-  _corregirStatsJugador(j.equipo, j.nombre, nombre, goles, amarillas, rojas);
-
-  renderizarJugadores();
-  renderizarEstadisticas();
-  mostrarExito('Jugador actualizado');
-}
-
-function eliminarJugador(id) {
-  if (!confirm('¿Eliminar este jugador?')) return;
-  jugadoresActual = jugadoresActual.filter(j => j.id !== id);
-  guardarJugadoresLocal(jugadoresActual);
-  renderizarJugadores();
 }
 
 /* ──────────────────────────────────────────────
@@ -928,8 +818,19 @@ function renderizarFixture() {
 /* Elimina el torneo completo: datos locales + hoja en Google Drive */
 async function eliminarTorneoCompleto() {
   const nombre = torneoActual?.nombre || 'este torneo';
-  if (!confirm(`¿Eliminar "${nombre}"?\n\nSe borrarán todos los datos locales y se eliminará la hoja de cálculo de Google Drive.\n\nEsta acción NO se puede deshacer.`)) return;
-  if (!confirm('Segunda confirmación: ¿estás seguro de que quieres eliminar el torneo permanentemente?')) return;
+  const ok1 = await confirmarAccion({
+    titulo: 'Eliminar torneo',
+    mensaje: `¿Eliminar "${nombre}"?\n\nSe borrarán todos los datos locales y se eliminará la hoja de cálculo de Google Drive.\n\nEsta acción NO se puede deshacer.`,
+    textoConfirmar: 'Eliminar'
+  });
+  if (!ok1) return;
+
+  const ok2 = await confirmarAccion({
+    titulo: 'Confirmación final',
+    mensaje: '¿Estás completamente seguro de que quieres eliminar el torneo de forma permanente?',
+    textoConfirmar: 'Sí, eliminar definitivamente'
+  });
+  if (!ok2) return;
 
   const sheetId = torneoActual?.sheetId;
   mostrarCarga('Eliminando torneo...');

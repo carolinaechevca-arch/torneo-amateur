@@ -107,7 +107,7 @@ function agregarJugadorDesdeStats() {
     ['inline-jugador-nombre', 'inline-jugador-cedula', 'inline-jugador-celular'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
-    renderizarJugadores();
+    renderizarEquipos();
   }
 }
 
@@ -163,7 +163,7 @@ async function guardarEstadistica() {
     return;
   }
 
-  const nuevaStat = { jornada, partidoId, equipo, jugador, goles, amarillas, rojas };
+  const nuevaStat = { id: _nuevoIdStat(), jornada, partidoId, equipo, jugador, goles, amarillas, rojas };
 
   mostrarCarga('Guardando estadística...');
   try {
@@ -194,6 +194,20 @@ async function guardarEstadistica() {
   }
 }
 
+/* Reescribe la hoja "Estadísticas" completa (usado al renombrar un equipo,
+   donde hace falta sobrescribir en vez de solo agregar filas nuevas) */
+async function _sincronizarEstadisticasSheets() {
+  const sheetId = torneoActual?.sheetId;
+  if (!sheetId) return;
+
+  const filas = [
+    ['Jornada', 'Partido', 'Equipo', 'Jugador', 'Goles', 'Amarillas', 'Rojas'],
+    ...statsActual.map(s => [s.jornada, s.partidoId, s.equipo, s.jugador, s.goles, s.amarillas, s.rojas])
+  ];
+
+  await limpiarYEscribir(sheetId, 'Estadísticas', filas);
+}
+
 /* ──────────────────────────────────────────────
    RENDERIZADO DE TABLAS DE ESTADÍSTICAS
    ────────────────────────────────────────────── */
@@ -205,7 +219,6 @@ function renderizarEstadisticas() {
   const equipoVal  = document.getElementById('stat-equipo')?.value;
   const jugadorVal = document.getElementById('stat-jugador-sel')?.value;
 
-  _poblarEquiposJugadores();
   poblarSelectorJornadas();
 
   // Restaurar selecciones y volver a poblar los selectores en cascada
