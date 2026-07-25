@@ -9,6 +9,8 @@ const LS_STATS     = 'ta_stats';
 const LS_HORARIOS  = 'ta_horarios';
 const LS_JUGADORES = 'ta_jugadores';
 const LS_HISTORIAL = 'ta_historial';
+const LS_FIN_EQUIPOS   = 'ta_finanzas_equipos';
+const LS_FIN_JUGADORES = 'ta_finanzas_jugadores';
 
 // Estado global de la aplicación
 let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja }
@@ -18,6 +20,8 @@ let horariosActual  = [];    // array de horarios de partidos
 let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula, celular }
 let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
+let finanzasEquiposActual   = []; // [{ equipo, abonos: [{id, monto, fecha}] }]
+let finanzasJugadoresActual = []; // [{ jugadorId, montoCubierto }]
 
 /* Detecta si un partido es en realidad un "descansa", incluso si quedó mal guardado
    (fixtures viejos de modalidad ida-vuelta podían guardar el descanso de la vuelta
@@ -53,7 +57,7 @@ function cargarTorneoLocal() {
 }
 
 function borrarTorneoLocal() {
-  [LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS, LS_JUGADORES, LS_HISTORIAL].forEach(k => localStorage.removeItem(k));
+  [LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS, LS_JUGADORES, LS_HISTORIAL, LS_FIN_EQUIPOS, LS_FIN_JUGADORES].forEach(k => localStorage.removeItem(k));
 }
 
 function guardarFixtureLocal(fixture) {
@@ -91,6 +95,11 @@ function cargarJugadoresLocal()   { try { return JSON.parse(localStorage.getItem
 function guardarHistorialLocal(h) { localStorage.setItem(LS_HISTORIAL, JSON.stringify(h)); }
 function cargarHistorialLocal()   { try { return JSON.parse(localStorage.getItem(LS_HISTORIAL) || '[]'); } catch (_) { return []; } }
 
+function guardarFinanzasEquiposLocal(f)   { localStorage.setItem(LS_FIN_EQUIPOS, JSON.stringify(f)); }
+function cargarFinanzasEquiposLocal()     { try { return JSON.parse(localStorage.getItem(LS_FIN_EQUIPOS) || '[]'); } catch (_) { return []; } }
+function guardarFinanzasJugadoresLocal(f) { localStorage.setItem(LS_FIN_JUGADORES, JSON.stringify(f)); }
+function cargarFinanzasJugadoresLocal()   { try { return JSON.parse(localStorage.getItem(LS_FIN_JUGADORES) || '[]'); } catch (_) { return []; } }
+
 /* ──────────────────────────────────────────────
    CARGA INICIAL DE LA APP
    ────────────────────────────────────────────── */
@@ -102,6 +111,8 @@ function cargarDatosApp() {
   horariosActual  = cargarHorariosLocal();
   jugadoresActual = cargarJugadoresLocal();
   historialActual = cargarHistorialLocal();
+  finanzasEquiposActual   = cargarFinanzasEquiposLocal();
+  finanzasJugadoresActual = cargarFinanzasJugadoresLocal();
 
   if (!torneoActual) return;
 
@@ -213,7 +224,7 @@ async function crearTorneo() {
     // 1. Crear hoja de cálculo en Drive
     const sheetData = await crearSheet(
       `⚽ ${nombre}`,
-      ['Equipos', 'Fixture', 'Posiciones', 'Estadísticas', 'Jornadas']
+      ['Equipos', 'Fixture', 'Posiciones', 'Estadísticas', 'Jornadas', 'Finanzas_Equipos', 'Finanzas_Jugadores']
     );
     const sheetId = sheetData.spreadsheetId;
 
@@ -223,16 +234,21 @@ async function crearTorneo() {
       : generarFixtureRoundRobin(equipos);
     asignarHorariosEquitativos(fixture);
 
-    // 3. Escribir datos iniciales en las hojas
-    mostrarCarga('Escribiendo datos iniciales...');
-    await _inicializarHojasSheets(sheetId, nombre, equipos, fixture);
+    // 3. Inicializar finanzas: un registro de abonos (vacío) por equipo
+    const finanzasEquipos = equipos.map(e => ({ equipo: e, abonos: [] }));
 
-    // 4. Guardar en localStorage
+    // 4. Escribir datos iniciales en las hojas
+    mostrarCarga('Escribiendo datos iniciales...');
+    await _inicializarHojasSheets(sheetId, nombre, equipos, fixture, finanzasEquipos);
+
+    // 5. Guardar en localStorage
     const torneoData = { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja };
     guardarTorneoLocal(torneoData);
     guardarFixtureLocal(fixture);
     guardarStatsLocal([]);
     guardarHorariosLocal([]);
+    guardarFinanzasEquiposLocal(finanzasEquipos);
+    guardarFinanzasJugadoresLocal([]);
 
     mostrarExito(`¡Torneo "${nombre}" creado con éxito! 🎉`);
     mostrarPantalla('app');
@@ -250,7 +266,7 @@ async function crearTorneo() {
 }
 
 /* Escribe los datos iniciales en todas las hojas del spreadsheet */
-async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture) {
+async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture, finanzasEquipos) {
   // Hoja Equipos
   const filasEquipos = [
     ['ID', 'Nombre'],
@@ -275,12 +291,20 @@ async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture) {
   // Hoja Jornadas
   const filasJornadas = [['Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora']];
 
+  // Hoja Finanzas_Equipos (una fila por abono; ninguna al crear el torneo)
+  const filasFinEquipos = [['Equipo', 'Monto', 'Fecha']];
+
+  // Hoja Finanzas_Jugadores (ninguna fila al crear el torneo, aún no hay tarjetas)
+  const filasFinJugadores = [['Jugador', 'Equipo', 'MontoCubierto']];
+
   await escribirLotes(sheetId, [
     { rango: 'Equipos!A1',     valores: filasEquipos },
     { rango: 'Fixture!A1',     valores: filasFixture  },
     { rango: 'Posiciones!A1',  valores: filasPos      },
     { rango: 'Estadísticas!A1', valores: filasStats   },
     { rango: 'Jornadas!A1',    valores: filasJornadas },
+    { rango: 'Finanzas_Equipos!A1',   valores: filasFinEquipos   },
+    { rango: 'Finanzas_Jugadores!A1', valores: filasFinJugadores },
   ]);
 }
 
@@ -609,6 +633,7 @@ function mostrarSeccion(seccionId) {
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
   if (seccionId === 'sec-fixture')     renderizarFixture();
   if (seccionId === 'sec-jugadores')   { _poblarEquiposJugadores(); renderizarJugadores(); }
+  if (seccionId === 'sec-finanzas')    renderizarFinanzas();
 }
 
 /* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */

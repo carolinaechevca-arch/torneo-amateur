@@ -213,6 +213,9 @@
       <li><button class="sidebar-item" data-seccion="sec-fixture" onclick="mostrarSeccion('sec-fixture')" role="tab">
         <i class="bi bi-table"></i><span>Fixture</span>
       </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-jornadas" onclick="mostrarSeccion('sec-jornadas')" role="tab">
+        <i class="bi bi-calendar3"></i><span>Jornadas</span>
+      </button></li>
       <li><button class="sidebar-item" data-seccion="sec-resultados" onclick="mostrarSeccion('sec-resultados')" role="tab">
         <i class="bi bi-calendar2-check"></i><span>Resultados</span>
       </button></li>
@@ -222,14 +225,14 @@
       <li><button class="sidebar-item" data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">
         <i class="bi bi-graph-up-arrow"></i><span>Estadísticas</span>
       </button></li>
-      <li><button class="sidebar-item" data-seccion="sec-jornadas" onclick="mostrarSeccion('sec-jornadas')" role="tab">
-        <i class="bi bi-calendar3"></i><span>Jornadas</span>
+      <li><button class="sidebar-item" data-seccion="sec-jugadores" onclick="mostrarSeccion('sec-jugadores')">
+        <i class="bi bi-people-fill"></i><span>Jugadores</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-finanzas" onclick="mostrarSeccion('sec-finanzas')" role="tab">
+        <i class="bi bi-cash-coin"></i><span>Finanzas</span>
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-exportar" onclick="mostrarSeccion('sec-exportar')" role="tab">
         <i class="bi bi-upload"></i><span>Exportar</span>
-      </button></li>
-      <li><button class="sidebar-item" data-seccion="sec-jugadores" onclick="mostrarSeccion('sec-jugadores')">
-        <i class="bi bi-people-fill"></i><span>Jugadores</span>
       </button></li>
     </ul>
 
@@ -574,6 +577,42 @@
       </div>
     </section>
 
+    <!-- ══ SECCIÓN: FINANZAS ═════════════════════════ -->
+    <section id="sec-finanzas" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2><i class="bi bi-cash-coin"></i> Finanzas</h2>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-recaudado">–</div>
+          <div class="card-stat-label">Recaudado</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-pendiente">–</div>
+          <div class="card-stat-label">Pendiente</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-equipos-pendientes">–</div>
+          <div class="card-stat-label">Equipos con saldo</div>
+        </div>
+        <div class="card-stat">
+          <div class="card-stat-num" id="fin-jugadores-pendientes">–</div>
+          <div class="card-stat-label">Jugadores sin pagar</div>
+        </div>
+      </div>
+
+      <div class="seccion-header" style="margin-top:1.5rem">
+        <h3><i class="bi bi-shield-fill"></i> Inscripción por equipo</h3>
+        <button class="btn-secundario btn-pequeño" onclick="exportarTabla('tabla-finanzas-equipos-container')"><i class="bi bi-camera-fill"></i> Imagen</button>
+      </div>
+      <div id="tabla-finanzas-equipos-container">
+        <p class="sin-datos">Crea un torneo para ver Finanzas.</p>
+      </div>
+
+      <div id="finanzas-detalle-equipo" class="oculto" style="margin-top:1.5rem"></div>
+    </section>
+
   </main>
 
 
@@ -605,6 +644,7 @@
 <script src="js/posiciones.js"></script>
 <script src="js/estadisticas.js"></script>
 <script src="js/jornadas.js"></script>
+<script src="js/finanzas.js"></script>
 <script src="js/exportar.js"></script>
 
 <script>
