@@ -50,10 +50,12 @@ function calcularFinanzasEquipos() {
 }
 
 /* Un jugador tiene una lista de "cargos" en finanzasJugadoresActual:
-   - origen 'tarjetas': UNO POR PARTIDO (id T_<statId>, o T_<statId>_2, _3... si
-     hubo más de un cobro para ese mismo partido porque el anterior ya estaba
-     pagado). Cada fila tiene su propio monto fijo y su propio Pagado/Pendiente,
-     con la fecha de esa jornada — no es un total agregado del jugador.
+   - origen 'tarjetas': UNO POR PARTIDO (id T_<statId>, 1 a 1 con la fila de
+     statsActual de ese jugador en esa jornada). Cada fila tiene su propio
+     monto y su propio Pagado/Pendiente — no es un total agregado del jugador.
+     Una vez Pagado, el cargo queda bloqueado: no se recalcula más (ver
+     _cargoTarjetasEstaPagado, usado por equipos.js para deshabilitar la
+     edición de amarillas/rojas y el borrado de esa fila de stats).
    - origen 'resolucion': uno por cada fila de sanciones con multa>0 al publicar una
      Resolución. Su monto queda fijo para siempre; "pagado" es un booleano simple.
    Ambos se normalizan aquí a la misma forma de fila para que la UI (equipos.js) los
@@ -98,6 +100,23 @@ function _migrarCargosTarjetasPorPartido() {
 
     const entrada = _obtenerEntradaFinanzasJugador(jugador.id, true);
 
+    // Consolida duplicados de un modelo anterior (más de una fila para el
+    // mismo partido, ej. T_<statId> y T_<statId>_2): un solo cargo por
+    // partido, pagado solo si TODas las filas viejas ya lo estaban.
+    const porStatId = {};
+    entrada.cargos.filter(c => c.origen === 'tarjetas' && c.statId).forEach(c => {
+      (porStatId[c.statId] = porStatId[c.statId] || []).push(c);
+    });
+    Object.values(porStatId).forEach(filas => {
+      if (filas.length <= 1) return;
+      const montoTotal = filas.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+      const pagado = filas.every(c => c.pagado);
+      const base = filas[0];
+      entrada.cargos = entrada.cargos.filter(c => !filas.includes(c));
+      entrada.cargos.push({ ...base, id: `T_${base.statId}`, monto: montoTotal, pagado });
+      cambiado = true;
+    });
+
     let restanteLegacy = 0;
     const legacyIdx = entrada.cargos.findIndex(c => c.origen === 'tarjetas' && !c.statId);
     if (legacyIdx !== -1) {
@@ -122,7 +141,7 @@ function _migrarCargosTarjetasPorPartido() {
           statId: s.id,
           amarillas: Number(s.amarillas) || 0,
           rojas: Number(s.rojas) || 0,
-          fecha: _fechaEntradaTarjetas(s),
+          fecha: _etiquetaPartidoTarjetas(s),
           monto,
           pagado: pagarEsteAhora
         });
@@ -143,94 +162,80 @@ function _obtenerEntradaFinanzasJugador(jugadorId, crear) {
   return entrada;
 }
 
-/* Fee estándar de UNA entrada de stats (un partido): si llegó a 2 amarillas
-   (expulsión por doble amarilla) se cobra solo el precio de la roja, sin
-   sumar además el precio de esas 2 amarillas — la expulsión ya "absorbe" la
-   sanción. Amarilla(s) sueltas + una roja directa (sin llegar a 2 amarillas
-   en ese mismo partido) sí se cobran sumadas. */
+/* Fee de UNA entrada de stats (un partido), a partir SOLO de los datos de ese
+   partido — nunca acumulado con otros:
+     rojas_por_conversion = floor(amarillas / 2)   → doble amarilla = expulsión
+     amarillas_sueltas    = amarillas % 2
+     rojas_directas       = rojas_guardadas - rojas_por_conversion
+   Se resta rojas_por_conversion de lo guardado en "Rojas" porque el formulario
+   de Estadísticas ya auto-completa ese campo a 1 cuando amarillas llega a 2
+   (la conversión queda "horneada" ahí) — sin este ajuste se cobraría la misma
+   roja dos veces (una como conversión, otra como directa). */
 function _feeEstandarEntrada(s, precioAmarilla, precioRoja) {
-  const am = Number(s.amarillas) || 0;
-  const ro = Number(s.rojas) || 0;
-  return am >= 2 ? precioRoja : (am * precioAmarilla + ro * precioRoja);
+  const amarillas          = Number(s.amarillas) || 0;
+  const rojasGuardadas     = Number(s.rojas) || 0;
+  const rojasPorConversion = Math.floor(amarillas / 2);
+  const amarillasSueltas   = amarillas % 2;
+  const rojasDirectas      = Math.max(0, rojasGuardadas - rojasPorConversion);
+  return (rojasDirectas + rojasPorConversion) * precioRoja + amarillasSueltas * precioAmarilla;
 }
 
-/* Fee "descartando" lo anterior: si el partido tiene roja, se cobra solo la
-   roja (se descarta cualquier amarilla de ese mismo partido, aunque no llegue
-   a 2). Se usa cuando el admin elige "descartar" en el diálogo de ajuste. */
-function _feeDescartandoAnterior(s, precioAmarilla, precioRoja) {
-  const ro = Number(s.rojas) || 0;
-  if (ro > 0) return ro * precioRoja;
-  return (Number(s.amarillas) || 0) * precioAmarilla;
-}
-
-function _fechaEntradaTarjetas(s) {
-  const horario = (typeof horariosActual !== 'undefined') ? horariosActual.find(h => h.partidoId === s.partidoId) : null;
-  return horario?.fecha ? _formatoFechaCortaResolucion(horario.fecha) : `Jornada ${s.jornada}`;
+/* Etiqueta de partido para el concepto del cargo — misma convención "J{n}"
+   que ya usa la tabla "Goles y tarjetas por partido". */
+function _etiquetaPartidoTarjetas(s) {
+  return `J${s.jornada}`;
 }
 
 /* Reconcilia el cobro de tarjetas de UN partido con las nuevas cantidades de
-   amarillas/rojas, después de que el admin confirmó el cambio (o antes de
-   guardarlo, para poder preguntar si hace falta):
-   - Si ya hay un cobro pendiente para este partido: si el fee sube, PREGUNTA
-     sumar (usa el fee estándar completo) o descartar lo anterior (usa el fee
-     "solo la roja" si hay roja); si baja, se ajusta solo sin preguntar.
-   - Si no hay pendiente (nunca hubo, o el único cobro de este partido ya está
-     pagado): si lo ya pagado no alcanza para el fee nuevo, se genera un cobro
-     nuevo y separado por la diferencia, sin preguntar nada (el pagado queda
-     intacto). Si ya alcanza o sobra, no se genera nada.
-   Devuelve true si se puede continuar guardando la edición, false si el
-   usuario canceló el diálogo. */
-async function _sincronizarCargoTarjetasEntrada(jugador, statId, amarillasNuevas, rojasNuevas) {
-  if (!torneoActual) return true;
+   amarillas/rojas (una sola fila por partido, id T_<statId>):
+   - Si el cargo de ese partido ya está Pagado: NO se toca (la UI debe impedir
+     llegar acá deshabilitando la edición de amarillas/rojas de esa fila).
+   - Si está Pendiente o no existe: se (re)calcula libremente con la fórmula
+     de arriba, sin preguntar nada. Si el fee da 0, se borra la fila. */
+function _sincronizarCargoTarjetasEntrada(jugador, statId, amarillasNuevas, rojasNuevas) {
+  if (!torneoActual) return;
   const precioAmarilla = Number(torneoActual.precioAmarilla) || 0;
   const precioRoja     = Number(torneoActual.precioRoja) || 0;
-  const entradaSimulada = { amarillas: amarillasNuevas, rojas: rojasNuevas };
-  const feeEstandar = _feeEstandarEntrada(entradaSimulada, precioAmarilla, precioRoja);
+  const fee = _feeEstandarEntrada({ amarillas: amarillasNuevas, rojas: rojasNuevas }, precioAmarilla, precioRoja);
 
   const entrada = _obtenerEntradaFinanzasJugador(jugador.id, true);
-  const filasDelPartido = entrada.cargos.filter(c => c.origen === 'tarjetas' && c.statId === statId);
-  const filaPendiente   = filasDelPartido.find(c => !c.pagado);
-  const totalPagado     = filasDelPartido.filter(c => c.pagado).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+  const cargo   = entrada.cargos.find(c => c.origen === 'tarjetas' && c.statId === statId);
+  if (cargo?.pagado) return; // cerrado: no se modifica
 
   const s = statsActual.find(x => x.id === statId);
-  const fecha = s ? _fechaEntradaTarjetas(s) : '';
+  const etiqueta = s ? _etiquetaPartidoTarjetas(s) : '';
 
-  if (filaPendiente) {
-    if (feeEstandar > filaPendiente.monto) {
-      const eleccion = await confirmarAjusteCobroTarjetas(jugador.nombre, filaPendiente.monto, feeEstandar);
-      if (eleccion === null) return false;
-      filaPendiente.monto = eleccion === 'descartar'
-        ? _feeDescartandoAnterior(entradaSimulada, precioAmarilla, precioRoja)
-        : feeEstandar;
-    } else {
-      filaPendiente.monto = feeEstandar; // baja o queda igual: se ajusta solo
-    }
-    filaPendiente.amarillas = amarillasNuevas;
-    filaPendiente.rojas     = rojasNuevas;
-    filaPendiente.fecha     = fecha;
-    if (filaPendiente.monto <= 0) {
-      entrada.cargos = entrada.cargos.filter(c => c !== filaPendiente);
-    }
+  if (fee <= 0) {
+    if (cargo) entrada.cargos = entrada.cargos.filter(c => c !== cargo);
+  } else if (cargo) {
+    cargo.monto = fee;
+    cargo.amarillas = amarillasNuevas;
+    cargo.rojas = rojasNuevas;
+    cargo.fecha = etiqueta;
   } else {
-    const faltante = feeEstandar - totalPagado;
-    if (faltante > 0) {
-      const filasPagadas = filasDelPartido.filter(c => c.pagado);
-      const sufijo = filasPagadas.length === 0 ? '' : `_${filasPagadas.length + 1}`;
-      entrada.cargos.push({
-        id: `T_${statId}${sufijo}`,
-        origen: 'tarjetas',
-        statId,
-        amarillas: amarillasNuevas,
-        rojas: rojasNuevas,
-        fecha,
-        monto: faltante,
-        pagado: false
-      });
-    }
+    entrada.cargos.push({
+      id: `T_${statId}`,
+      origen: 'tarjetas',
+      statId,
+      amarillas: amarillasNuevas,
+      rojas: rojasNuevas,
+      fecha: etiqueta,
+      monto: fee,
+      pagado: false
+    });
   }
 
   guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
-  return true;
+}
+
+/* ¿El cargo de tarjetas de ESTE partido específico ya está pagado? Se usa para
+   bloquear la edición de amarillas/rojas y el borrado de esa fila de stats. */
+function _cargoTarjetasEstaPagado(statId) {
+  for (const entrada of finanzasJugadoresActual) {
+    const c = entrada.cargos.find(x => x.origen === 'tarjetas' && x.statId === statId);
+    if (c) return !!c.pagado;
+  }
+  return false;
 }
 
 function _cargosTarjetasDeJugador(jugador) {
@@ -238,18 +243,22 @@ function _cargosTarjetasDeJugador(jugador) {
   if (!entrada) return [];
   return entrada.cargos
     .filter(c => c.origen === 'tarjetas')
-    .map(c => ({
-      cargoId:      c.id,
-      origen:       'tarjetas',
-      jugadorId:    jugador.id,
-      jugador:      jugador.nombre,
-      equipo:       jugador.equipo,
-      numeroCamisa: jugador.numeroCamisa,
-      concepto:     `${_textoCargos(c.amarillas || 0, c.rojas || 0)} · ${c.fecha || ''}`,
-      monto:        Number(c.monto) || 0,
-      pagado:       !!c.pagado
-    }))
-    .sort((a, b) => a.concepto.localeCompare(b.concepto));
+    .map(c => {
+      const s = statsActual.find(x => x.id === c.statId);
+      return {
+        cargoId:      c.id,
+        origen:       'tarjetas',
+        jugadorId:    jugador.id,
+        jugador:      jugador.nombre,
+        equipo:       jugador.equipo,
+        numeroCamisa: jugador.numeroCamisa,
+        concepto:     `${c.fecha || ''} · ${_textoCargos(c.amarillas || 0, c.rojas || 0)}`,
+        monto:        Number(c.monto) || 0,
+        pagado:       !!c.pagado,
+        _jornada:     s ? Number(s.jornada) || 0 : 0
+      };
+    })
+    .sort((a, b) => a._jornada - b._jornada);
 }
 
 function _cargosResolucionDeJugador(jugador) {
@@ -380,48 +389,6 @@ async function toggleCargoJugador(jugadorId, cargoId) {
     renderizarEquipos();
     _refrescarModalJugadorSiAbierto(jugadorId);
   }
-}
-
-/* Diálogo de 2 opciones para cuando editar las tarjetas de un partido sube el
-   cobro de ese partido y todavía queda un pendiente sin pagar. "Sumar" cobra
-   todas las tarjetas de ese partido sumadas (amarillas + roja); "Descartar"
-   cobra solo la roja, descartando la(s) amarilla(s) de ese mismo partido.
-   Devuelve 'sumar' | 'descartar' | null (canceló, no se guarda el cambio). */
-function confirmarAjusteCobroTarjetas(nombreJugador, montoAntes, montoDespues) {
-  return new Promise(resolve => {
-    const overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.innerHTML = `
-      <div class="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="cat-titulo">
-        <h3 class="confirm-titulo" id="cat-titulo">El cobro de ${nombreJugador} sube</h3>
-        <p class="confirm-mensaje">
-          Este partido ya tenía un cobro pendiente de ${_formatoMoneda(montoAntes)}. Con el cambio subiría a
-          ${_formatoMoneda(montoDespues)} si se suman todas las tarjetas. ¿Qué preferís cobrar?
-        </p>
-        <div class="confirm-acciones">
-          <button class="btn-secundario" id="cat-btn-cancelar">Cancelar</button>
-          <button class="btn-secundario" id="cat-btn-descartar">Solo la roja (descartar amarilla)</button>
-          <button class="btn-principal"  id="cat-btn-sumar">Sumar todas las tarjetas</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const cerrar = (resultado) => {
-      document.removeEventListener('keydown', onKeydown);
-      overlay.remove();
-      resolve(resultado);
-    };
-    const onKeydown = (e) => { if (e.key === 'Escape') cerrar(null); };
-
-    overlay.querySelector('#cat-btn-cancelar').onclick  = () => cerrar(null);
-    overlay.querySelector('#cat-btn-descartar').onclick = () => cerrar('descartar');
-    overlay.querySelector('#cat-btn-sumar').onclick     = () => cerrar('sumar');
-    overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(null); });
-    document.addEventListener('keydown', onKeydown);
-
-    overlay.querySelector('#cat-btn-sumar')?.focus();
-  });
 }
 
 /* ──────────────────────────────────────────────

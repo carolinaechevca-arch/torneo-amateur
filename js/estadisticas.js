@@ -171,7 +171,7 @@ async function guardarEstadistica() {
     guardarStatsLocal(statsActual);
 
     const jugadorObj = jugadoresActual.find(j => j.equipo === equipo && j.nombre === jugador);
-    if (jugadorObj) await _sincronizarCargoTarjetasEntrada(jugadorObj, nuevaStat.id, amarillas, rojas);
+    if (jugadorObj) _sincronizarCargoTarjetasEntrada(jugadorObj, nuevaStat.id, amarillas, rojas);
 
     if (torneoActual?.sheetId) {
       await agregarFilas(torneoActual.sheetId, 'Estadísticas!A:G', [

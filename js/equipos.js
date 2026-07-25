@@ -536,6 +536,11 @@ function _renderHistorialStatsJugador(jugadorId) {
               : '<span class="fin-badge fin-badge-pendiente">Pendiente</span>';
           }
 
+          const pagado = _cargoTarjetasEstaPagado(s.id);
+          const btnEliminar = pagado
+            ? `<button class="btn-peligro btn-xs" disabled title="No editable: cargo ya pagado"><i class="bi bi-trash3-fill"></i></button>`
+            : `<button class="btn-peligro btn-xs" onclick="eliminarStatEntry('${s.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>`;
+
           return `
             <tr id="stat-row-${s.id}">
               <td style="text-align:left">${etiqueta}</td>
@@ -545,7 +550,7 @@ function _renderHistorialStatsJugador(jugadorId) {
               <td>${sancionTag}</td>
               <td class="col-acciones">
                 <button class="btn-secundario btn-xs" onclick="iniciarEditarStatEntry('${s.id}')" title="Editar"><i class="bi bi-pencil-fill"></i></button>
-                <button class="btn-peligro   btn-xs" onclick="eliminarStatEntry('${s.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
+                ${btnEliminar}
               </td>
             </tr>`;
         }).join('')}
@@ -554,6 +559,9 @@ function _renderHistorialStatsJugador(jugadorId) {
   `;
 }
 
+/* El campo de goles siempre se puede editar; los de amarillas/rojas se
+   deshabilitan si el cargo de tarjetas de este partido ya está Pagado
+   (editarlos alteraría un cobro ya cerrado). */
 function iniciarEditarStatEntry(statId) {
   const s = statsActual.find(x => x.id === statId);
   const row = document.getElementById(`stat-row-${statId}`);
@@ -561,11 +569,13 @@ function iniciarEditarStatEntry(statId) {
   const partido = fixtureActual.find(p => p.id === s.partidoId);
   const jugador = jugadoresActual.find(j => j.equipo === s.equipo && j.nombre === s.jugador);
   const etiqueta = partido ? `J${s.jornada}` : 'Ajuste manual';
+  const pagado = _cargoTarjetasEstaPagado(statId);
+  const disabledTarjetas = pagado ? 'disabled title="No editable: cargo ya pagado"' : '';
   row.innerHTML = `
     <td style="text-align:left">${etiqueta}</td>
     <td><input type="number" id="es-g-${statId}" value="${s.goles}"     min="0" max="20" class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="es-a-${statId}" value="${s.amarillas}" min="0" max="2"  class="input-edit input-edit-xs"></td>
-    <td><input type="number" id="es-r-${statId}" value="${s.rojas}"     min="0" max="1"  class="input-edit input-edit-xs"></td>
+    <td><input type="number" id="es-a-${statId}" value="${s.amarillas}" min="0" max="2"  class="input-edit input-edit-xs" ${disabledTarjetas}></td>
+    <td><input type="number" id="es-r-${statId}" value="${s.rojas}"     min="0" max="1"  class="input-edit input-edit-xs" ${disabledTarjetas}></td>
     <td>–</td>
     <td class="col-acciones">
       <button class="btn-principal btn-xs" onclick="guardarEdicionStatEntry('${statId}')"><i class="bi bi-check-lg"></i></button>
@@ -576,16 +586,17 @@ function iniciarEditarStatEntry(statId) {
 
 /* Guarda la corrección de una entrada, validando contra el marcador real del partido
    (si tiene uno asociado), sin contar el goleo de esta misma entrada como "ya registrado".
-   El cobro de tarjetas de ESE partido se reconcilia aparte (_sincronizarCargoTarjetasEntrada):
-   si sube y todavía hay algo pendiente de ese mismo partido, pregunta sumar o descartar;
-   si baja, o si lo pendiente ya estaba pagado, se ajusta solo sin preguntar. */
+   Si el cargo de tarjetas de ESE partido ya está Pagado, amarillas/rojas quedan
+   congeladas en su valor original (los inputs ya están disabled, pero se refuerza
+   acá por si alguien fuerza el DOM) — solo goles se puede seguir editando. */
 async function guardarEdicionStatEntry(statId) {
   const s = statsActual.find(x => x.id === statId);
   if (!s) return;
 
-  const goles     = Math.max(0, parseInt(document.getElementById(`es-g-${statId}`)?.value || 0));
-  const amarillas = Math.max(0, parseInt(document.getElementById(`es-a-${statId}`)?.value || 0));
-  const rojas     = Math.max(0, parseInt(document.getElementById(`es-r-${statId}`)?.value || 0));
+  const goles = Math.max(0, parseInt(document.getElementById(`es-g-${statId}`)?.value || 0));
+  const pagado = _cargoTarjetasEstaPagado(statId);
+  const amarillas = pagado ? s.amarillas : Math.max(0, parseInt(document.getElementById(`es-a-${statId}`)?.value || 0));
+  const rojas     = pagado ? s.rojas     : Math.max(0, parseInt(document.getElementById(`es-r-${statId}`)?.value || 0));
 
   const partido = fixtureActual.find(p => p.id === s.partidoId);
   if (partido && goles > 0) {
@@ -601,10 +612,7 @@ async function guardarEdicionStatEntry(statId) {
   }
 
   const jugador = jugadoresActual.find(j => j.equipo === s.equipo && j.nombre === s.jugador);
-  if (jugador) {
-    const ok = await _sincronizarCargoTarjetasEntrada(jugador, statId, amarillas, rojas);
-    if (!ok) return; // canceló el diálogo: no se guarda el cambio
-  }
+  if (jugador) _sincronizarCargoTarjetasEntrada(jugador, statId, amarillas, rojas);
 
   s.goles = goles; s.amarillas = amarillas; s.rojas = rojas;
   guardarStatsLocal(statsActual);
@@ -618,6 +626,10 @@ async function guardarEdicionStatEntry(statId) {
 async function eliminarStatEntry(statId) {
   const s = statsActual.find(x => x.id === statId);
   if (!s) return;
+  if (_cargoTarjetasEstaPagado(statId)) {
+    mostrarError('No se puede eliminar: el cargo de tarjetas de este partido ya está pagado.');
+    return;
+  }
   const ok = await confirmarAccion({
     titulo: 'Eliminar registro',
     mensaje: `¿Eliminar este registro de ${s.jugador} (${s.goles} gol(es), ${s.amarillas} amarilla(s), ${s.rojas} roja(s))?`,
@@ -627,7 +639,7 @@ async function eliminarStatEntry(statId) {
 
   const { equipo, jugador } = s;
   const jugadorObj = jugadoresActual.find(j => j.equipo === equipo && j.nombre === jugador);
-  if (jugadorObj) await _sincronizarCargoTarjetasEntrada(jugadorObj, statId, 0, 0); // baja a 0: nunca pregunta
+  if (jugadorObj) _sincronizarCargoTarjetasEntrada(jugadorObj, statId, 0, 0); // baja a 0: nunca pregunta
 
   statsActual = statsActual.filter(x => x.id !== statId);
   guardarStatsLocal(statsActual);
