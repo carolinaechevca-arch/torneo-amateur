@@ -438,60 +438,115 @@ function generarFixtureIdaVuelta(equipos, categoria = 'primera') {
    HORARIOS EQUITATIVOS
    ────────────────────────────────────────────── */
 
+/* Fisher-Yates: devuelve una copia de `arr` en orden aleatorio real. */
+function _fisherYatesShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Todas las permutaciones de un array (uso interno, solo para arrays chicos). */
+function _permutaciones(arr) {
+  if (arr.length <= 1) return [arr];
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    const resto = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const perm of _permutaciones(resto)) result.push([arr[i], ...perm]);
+  }
+  return result;
+}
+
 /* Reordena los partidos DENTRO de cada jornada (el orden de exhibición
-   representa el horario: el primero es el más temprano y el último el más
-   tarde) para que, jornada tras jornada, ningún equipo:
-     a) juegue en el horario más temprano (slot 0) dos jornadas seguidas, y
-     b) repita el mismo horario/posición muchas veces seguidas.
-   No cambia los emparejamientos (local/visitante), solo su posición.
-   Los partidos "descansa" no ocupan horario y quedan al final del bloque. */
+   representa la posición/horario: el primero es el más temprano y el
+   último el más tarde). No cambia los emparejamientos (local/visitante),
+   solo su posición. Reglas, de mayor a menor prioridad:
+     1. El equipo que descansa siempre queda al final del bloque.
+     2. Ningún equipo puede repetir la misma posición 3 jornadas seguidas
+        (regla dura: costo casi infinito, solo se viola si es matemáticamente
+        inevitable — pocos equipos/pocas posiciones posibles).
+     3. Equidad: a lo largo de todo el torneo, cada equipo debe pasar por
+        las distintas posiciones de forma pareja (penaliza posiciones ya
+        sobre-usadas por ese equipo).
+     4. El resto se decide con un shuffle aleatorio real (Fisher-Yates),
+        así el orden no sigue la secuencia fija de generación del round-robin. */
 function asignarHorariosEquitativos(partidos) {
-  const jornadas = [...new Set(partidos.map(p => p.jornada))].sort((a, b) => a - b);
-  const ultimoSlot = {};
-  const streak = {};
+  const jornadas  = [...new Set(partidos.map(p => p.jornada))].sort((a, b) => a - b);
+  const historial = {};  // equipo -> [slot jornada N-2, slot jornada N-1] (máx 2)
+  const frecuencia = {}; // equipo -> { slot: veces_usado }
 
   const costo = (partido, slot) => {
     let c = 0;
     [partido.local, partido.visitante].forEach(eq => {
-      if (slot === 0 && ultimoSlot[eq] === 0) c += 1000;
-      if (slot === ultimoSlot[eq]) c += 100 * (streak[eq] || 1);
+      const hist = historial[eq] || [];
+      if (hist.length === 2 && hist[0] === slot && hist[1] === slot) {
+        c += 1000000; // regla dura: evitar 3ra vez seguida en el mismo slot
+      } else if (hist.length >= 1 && hist[hist.length - 1] === slot) {
+        c += 50; // desalienta (sin prohibir) repetir la posición anterior
+      }
+      c += (frecuencia[eq]?.[slot] || 0) * 8; // equidad global de posiciones
+      c += Math.random() * 3; // ruido aleatorio para variar el resultado
     });
     return c;
   };
 
   jornadas.forEach(j => {
-    const indices  = [];
+    const indices = [];
     partidos.forEach((p, idx) => { if (p.jornada === j) indices.push(idx); });
 
-    const jugables  = indices.filter(idx => partidos[idx].estado !== 'descansa').map(idx => partidos[idx]);
-    const descansa  = indices.filter(idx => partidos[idx].estado === 'descansa').map(idx => partidos[idx]);
+    const jugables = indices.filter(idx => partidos[idx].estado !== 'descansa').map(idx => partidos[idx]);
+    const descansa = indices.filter(idx => partidos[idx].estado === 'descansa').map(idx => partidos[idx]);
     const k = jugables.length;
 
     if (k > 0) {
-      const pendientes  = [...jugables];
-      const slotsLibres = [...Array(k).keys()];
-      const asignados   = []; // { partido, slot }
+      let asignados; // { partido, slot }[]
 
-      while (pendientes.length) {
-        let peorIdx = 0, peorCosto = -1, peorSlot = slotsLibres[0];
-        pendientes.forEach((p, idx) => {
-          let mejorSlot = slotsLibres[0], mejorCosto = Infinity;
-          slotsLibres.forEach(s => {
-            const c = costo(p, s);
-            if (c < mejorCosto) { mejorCosto = c; mejorSlot = s; }
-          });
-          if (mejorCosto > peorCosto) { peorCosto = mejorCosto; peorIdx = idx; peorSlot = mejorSlot; }
+      if (k <= 7) {
+        // Pocos partidos en la jornada: probar TODAS las combinaciones posibles
+        // y quedarse con la de menor costo total (garantiza el óptimo, incluida
+        // la regla dura de no-3-seguidas cuando sea matemáticamente posible).
+        const jugablesOrden = _fisherYatesShuffle(jugables);
+        const slots  = [...Array(k).keys()];
+        const matriz = jugablesOrden.map(p => slots.map(s => costo(p, s))); // costo fijo por celda
+
+        let mejorPerm = slots, mejorCostoTotal = Infinity;
+        _permutaciones(slots).forEach(perm => {
+          let total = 0;
+          for (let i = 0; i < k; i++) total += matriz[i][perm[i]];
+          if (total < mejorCostoTotal) { mejorCostoTotal = total; mejorPerm = perm; }
         });
-        const partido = pendientes.splice(peorIdx, 1)[0];
-        slotsLibres.splice(slotsLibres.indexOf(peorSlot), 1);
-        asignados.push({ partido, slot: peorSlot });
+
+        asignados = jugablesOrden.map((partido, i) => ({ partido, slot: mejorPerm[i] }));
+      } else {
+        // Jornadas con muchos partidos: heurística greedy "más restringido primero"
+        // (probar las 8!+ combinaciones sería impráctico).
+        const pendientes  = _fisherYatesShuffle(jugables);
+        const slotsLibres = _fisherYatesShuffle([...Array(k).keys()]);
+        asignados = [];
+
+        while (pendientes.length) {
+          let peorIdx = 0, peorCosto = -1, peorSlot = slotsLibres[0];
+          pendientes.forEach((p, idx) => {
+            let mejorSlot = slotsLibres[0], mejorCosto = Infinity;
+            slotsLibres.forEach(s => {
+              const c = costo(p, s);
+              if (c < mejorCosto) { mejorCosto = c; mejorSlot = s; }
+            });
+            if (mejorCosto > peorCosto) { peorCosto = mejorCosto; peorIdx = idx; peorSlot = mejorSlot; }
+          });
+          const partido = pendientes.splice(peorIdx, 1)[0];
+          slotsLibres.splice(slotsLibres.indexOf(peorSlot), 1);
+          asignados.push({ partido, slot: peorSlot });
+        }
       }
 
       asignados.sort((a, b) => a.slot - b.slot);
       const ordenJornada = [...asignados.map(a => a.partido), ...descansa];
       indices.forEach((idx, k2) => { partidos[idx] = ordenJornada[k2]; });
 
-      // Actualizar historial de slots por equipo para la próxima jornada
+      // Actualizar historial (últimas 2 posiciones) y frecuencia global por equipo
       const slotPorEquipo = {};
       asignados.forEach(({ partido, slot }) => {
         slotPorEquipo[partido.local]     = slot;
@@ -499,10 +554,17 @@ function asignarHorariosEquitativos(partidos) {
       });
       Object.keys(slotPorEquipo).forEach(eq => {
         const nuevo = slotPorEquipo[eq];
-        streak[eq]     = (ultimoSlot[eq] === nuevo) ? (streak[eq] || 1) + 1 : 1;
-        ultimoSlot[eq] = nuevo;
+        if (!historial[eq]) historial[eq] = [];
+        historial[eq].push(nuevo);
+        if (historial[eq].length > 2) historial[eq].shift();
+        if (!frecuencia[eq]) frecuencia[eq] = {};
+        frecuencia[eq][nuevo] = (frecuencia[eq][nuevo] || 0) + 1;
       });
     }
+
+    // El equipo que descansa rompe su racha: al volver a jugar no arrastra
+    // el historial de antes del descanso.
+    descansa.forEach(p => { historial[p.local] = []; });
   });
 
   return partidos;
