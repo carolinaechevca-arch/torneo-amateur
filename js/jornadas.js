@@ -5,16 +5,15 @@
 /* Renderiza el calendario editable con todos los partidos agrupados por jornada */
 function renderizarCalendario() {
   const cont = document.getElementById('calendario-jornadas');
-  const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
-  if (!cont || !torneoActual || !partidosCat.length) {
+  if (!cont || !torneoActual || !fixtureActual.length) {
     if (cont) cont.innerHTML = '<p class="sin-datos">Crea un torneo para ver el calendario.</p>';
     return;
   }
 
-  const jornadas = [...new Set(partidosCat.map(p => p.jornada))].sort((a, b) => a - b);
+  const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
 
   cont.innerHTML = jornadas.map(j => {
-    const partidos = _ordenarDescansaAlFinal(partidosCat.filter(p => p.jornada === j));
+    const partidos = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === j));
 
     const filaPartidos = partidos.map(p => {
       const h = horariosActual.find(h => h.partidoId === p.id) || {};
@@ -53,26 +52,22 @@ function renderizarCalendario() {
   }).join('');
 }
 
-/* Recoge los horarios del formulario (solo de la categoría visible) y los guarda,
-   preservando los horarios ya guardados de la otra categoría (no están en el DOM). */
+/* Recoge todos los horarios del formulario y los guarda en localStorage y Sheets */
 async function guardarJornadas() {
-  const partidosCat = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo);
-  const idsCat = new Set(partidosCat.map(p => p.id));
-  const nuevosHorariosCat = [];
+  const nuevosHorarios = [];
 
-  partidosCat.forEach(p => {
+  fixtureActual.forEach(p => {
     const fecha = document.getElementById(`fecha-${p.id}`)?.value || '';
     const hora  = document.getElementById(`hora-${p.id}`)?.value  || '';
 
     if (fecha || hora) {
-      nuevosHorariosCat.push({ partidoId: p.id, jornada: p.jornada, fecha, hora });
+      nuevosHorarios.push({ partidoId: p.id, jornada: p.jornada, fecha, hora });
     }
   });
 
   mostrarCarga('Guardando calendario...');
   try {
-    const horariosOtraCategoria = horariosActual.filter(h => !idsCat.has(h.partidoId));
-    horariosActual = [...horariosOtraCategoria, ...nuevosHorariosCat];
+    horariosActual = nuevosHorarios;
     guardarHorariosLocal(horariosActual);
 
     // Sincronizar con Sheets
@@ -96,10 +91,10 @@ async function _sincronizarJornadasSheets() {
   if (!sheetId) return;
 
   const filas = [
-    ['Categoria', 'Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora'],
+    ['Jornada', 'Partido', 'Local', 'Visitante', 'Fecha', 'Hora'],
     ...horariosActual.map(h => {
       const p = fixtureActual.find(fp => fp.id === h.partidoId);
-      return [p?.categoria === 'segunda' ? 'Segunda' : 'Primera', h.jornada, h.partidoId, p?.local || '', p?.visitante || '', h.fecha, h.hora];
+      return [h.jornada, h.partidoId, p?.local || '', p?.visitante || '', h.fecha, h.hora];
     })
   ];
 

@@ -161,48 +161,9 @@
 
       <!-- Nombres de equipos (generados dinámicamente) -->
       <div class="form-grupo">
-        <label>Nombres de los Equipos (Primera)</label>
+        <label>Nombres de los Equipos</label>
         <div id="campos-equipos" class="grid-equipos">
           <!-- Se genera con JS al cambiar num-equipos -->
-        </div>
-      </div>
-
-      <!-- Categoría Segunda (opcional) -->
-      <div class="form-grupo form-checkbox-grupo">
-        <label class="form-checkbox-label">
-          <input type="checkbox" id="tiene-segunda" onchange="toggleCategoriaSegunda()">
-          Este torneo tiene categoría Segunda
-        </label>
-      </div>
-
-      <div id="bloque-segunda" class="oculto">
-        <div class="form-grupo">
-          <label for="num-equipos-segunda">Cantidad de Equipos (Segunda)</label>
-          <select id="num-equipos-segunda" onchange="actualizarCamposEquiposSegunda()">
-            <option value="4">4 equipos</option>
-            <option value="5">5 equipos  ★ uno descansa por jornada</option>
-            <option value="6">6 equipos</option>
-            <option value="7">7 equipos  ★ uno descansa por jornada</option>
-            <option value="8" selected>8 equipos</option>
-            <option value="9">9 equipos  ★ uno descansa por jornada</option>
-            <option value="10">10 equipos</option>
-            <option value="11">11 equipos  ★ uno descansa por jornada</option>
-            <option value="12">12 equipos</option>
-            <option value="13">13 equipos  ★ uno descansa por jornada</option>
-            <option value="14">14 equipos</option>
-            <option value="15">15 equipos  ★ uno descansa por jornada</option>
-            <option value="16">16 equipos</option>
-            <option value="17">17 equipos  ★ uno descansa por jornada</option>
-            <option value="18">18 equipos</option>
-            <option value="19">19 equipos  ★ uno descansa por jornada</option>
-            <option value="20">20 equipos</option>
-          </select>
-        </div>
-        <div class="form-grupo">
-          <label>Nombres de los Equipos (Segunda)</label>
-          <div id="campos-equipos-segunda" class="grid-equipos">
-            <!-- Se genera con JS al cambiar num-equipos-segunda -->
-          </div>
         </div>
       </div>
 
@@ -242,12 +203,6 @@
       <button class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Colapsar menú" title="Colapsar menú">
         <i class="bi bi-chevron-left"></i>
       </button>
-    </div>
-
-    <!-- Selector de categoría (solo visible si el torneo tiene Segunda) -->
-    <div class="categoria-toggle oculto" id="categoria-toggle">
-      <button class="categoria-toggle-btn activo" data-cat="primera" onclick="cambiarCategoria('primera')">Primera</button>
-      <button class="categoria-toggle-btn" data-cat="segunda" onclick="cambiarCategoria('segunda')">Segunda</button>
     </div>
 
     <!-- Ítems de navegación -->

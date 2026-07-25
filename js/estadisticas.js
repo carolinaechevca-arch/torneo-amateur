@@ -18,7 +18,7 @@ function poblarSelectorJornadas() {
   if (!sel) return;
 
   const jornadas = [...new Set(
-    fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.estado !== 'descansa').map(p => p.jornada)
+    fixtureActual.filter(p => p.estado !== 'descansa').map(p => p.jornada)
   )].sort((a, b) => a - b);
 
   sel.innerHTML = '<option value="">Seleccionar jornada...</option>' +
@@ -43,7 +43,7 @@ function onCambioJornada() {
     return;
   }
 
-  const partidos = fixtureActual.filter(p => (p.categoria || 'primera') === categoriaViendo && p.jornada === jornada && p.estado !== 'descansa');
+  const partidos = fixtureActual.filter(p => p.jornada === jornada && p.estado !== 'descansa');
   selPartido.innerHTML = '<option value="">Seleccionar partido...</option>' +
     partidos.map(p => `<option value="${p.id}">${p.local} vs ${p.visitante}</option>`).join('');
 
@@ -171,9 +171,8 @@ async function guardarEstadistica() {
     guardarStatsLocal(statsActual);
 
     if (torneoActual?.sheetId) {
-      const categoriaTexto = categoriaViendo === 'segunda' ? 'Segunda' : 'Primera';
-      await agregarFilas(torneoActual.sheetId, 'Estadísticas!A:H', [
-        [categoriaTexto, jornada, partidoId, equipo, jugador, goles, amarillas, rojas]
+      await agregarFilas(torneoActual.sheetId, 'Estadísticas!A:G', [
+        [jornada, partidoId, equipo, jugador, goles, amarillas, rojas]
       ]);
     }
 
@@ -244,17 +243,14 @@ function _renderGoleadores() {
   const cont = document.getElementById('tabla-goleadores');
   if (!cont) return;
 
-  const equiposCat = _equiposCategoria(categoriaViendo);
-  const stats = statsActual.filter(s => equiposCat.includes(s.equipo));
-
-  if (stats.length === 0) {
+  if (statsActual.length === 0) {
     cont.innerHTML = '<p class="sin-datos">Sin goles registrados</p>';
     return;
   }
 
   // Agrupar goles por jugador
   const mapa = {};
-  stats.forEach(s => {
+  statsActual.forEach(s => {
     if (s.goles <= 0) return;
     const clave = `${s.jugador}|||${s.equipo}`;
     if (!mapa[clave]) mapa[clave] = { jugador: s.jugador, equipo: s.equipo, goles: 0 };
@@ -293,9 +289,8 @@ function _renderTarjetas() {
   const cont = document.getElementById('tabla-tarjetas');
   if (!cont) return;
 
-  const equiposCat = _equiposCategoria(categoriaViendo);
   const mapa = {};
-  statsActual.filter(s => equiposCat.includes(s.equipo)).forEach(s => {
+  statsActual.forEach(s => {
     if (s.amarillas <= 0 && s.rojas <= 0) return;
     const clave = `${s.jugador}|||${s.equipo}`;
     if (!mapa[clave]) mapa[clave] = { jugador: s.jugador, equipo: s.equipo, amarillas: 0, rojas: 0 };
@@ -339,7 +334,7 @@ function _renderJuegoLimpio() {
   if (!cont || !torneoActual) return;
 
   const mapa = {};
-  _equiposCategoria(categoriaViendo).forEach(e => {
+  torneoActual.equipos.forEach(e => {
     mapa[e] = { equipo: e, amarillas: 0, rojas: 0, puntos: 0 };
   });
 
