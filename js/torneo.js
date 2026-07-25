@@ -24,7 +24,7 @@ let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula,
 let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
 let finanzasEquiposActual   = []; // [{ equipo, abonos: [{id, monto, fecha}] }]
-let finanzasJugadoresActual = []; // [{ jugadorId, cargos: [{id, origen, monto|montoCubierto, pagado}] }]
+let finanzasJugadoresActual = []; // [{ jugadorId, cargos: [{id, origen, monto, pagado, ...}] }] — tarjetas: uno por partido (statId, fecha); resolución: uno por sanción publicada
 let resolucionesActual  = []; // [{ id, numero, estado, fecha, tablaSanciones:[], articulosVariables:[] }]
 let plantillasActual    = []; // [{ id, nombre, texto }]
 let _resolucionesContador = 0; // solo sube; nunca se reutiliza un número ya asignado
@@ -134,6 +134,7 @@ function cargarDatosApp() {
   _resolucionesContador   = cargarResolucionesContadorLocal();
   _asegurarIdsStats();
   _migrarFinanzasJugadoresActual();
+  _migrarCargosTarjetasPorPartido();
 
   if (!torneoActual) return;
 

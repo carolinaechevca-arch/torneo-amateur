@@ -576,9 +576,9 @@ function iniciarEditarStatEntry(statId) {
 
 /* Guarda la corrección de una entrada, validando contra el marcador real del partido
    (si tiene uno asociado), sin contar el goleo de esta misma entrada como "ya registrado".
-   Si el cambio de tarjetas altera el cobro de un jugador que ya tenía un pago
-   registrado, primero pregunta si ese pago cuenta a favor del nuevo monto
-   ("sumar") o si se descarta y el nuevo monto queda pendiente entero. */
+   El cobro de tarjetas de ESE partido se reconcilia aparte (_sincronizarCargoTarjetasEntrada):
+   si sube y todavía hay algo pendiente de ese mismo partido, pregunta sumar o descartar;
+   si baja, o si lo pendiente ya estaba pagado, se ajusta solo sin preguntar. */
 async function guardarEdicionStatEntry(statId) {
   const s = statsActual.find(x => x.id === statId);
   if (!s) return;
@@ -601,27 +601,9 @@ async function guardarEdicionStatEntry(statId) {
   }
 
   const jugador = jugadoresActual.find(j => j.equipo === s.equipo && j.nombre === s.jugador);
-  if (jugador && torneoActual) {
-    const precioAmarilla = Number(torneoActual.precioAmarilla) || 0;
-    const precioRoja     = Number(torneoActual.precioRoja) || 0;
-    const entradas       = statsActual.filter(x => x.equipo === s.equipo && x.jugador === s.jugador);
-    const entradasNuevas = entradas.map(x => x.id === statId ? { ...x, amarillas, rojas } : x);
-
-    const montoAntes   = _calcularMontoTarjetas(entradas, precioAmarilla, precioRoja).monto;
-    const montoDespues = _calcularMontoTarjetas(entradasNuevas, precioAmarilla, precioRoja).monto;
-
-    const entradaFin     = _obtenerEntradaFinanzasJugador(jugador.id, false);
-    const cargoTarjetas  = entradaFin?.cargos.find(c => c.origen === 'tarjetas');
-    const montoCubierto  = cargoTarjetas ? Number(cargoTarjetas.montoCubierto) || 0 : 0;
-
-    if (montoCubierto > 0 && montoDespues !== montoAntes) {
-      const eleccion = await confirmarAjusteCobroTarjetas(jugador.nombre, montoAntes, montoDespues);
-      if (eleccion === null) return; // canceló: no se guarda el cambio
-      if (eleccion === 'descartar') {
-        cargoTarjetas.montoCubierto = 0;
-        guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
-      }
-    }
+  if (jugador) {
+    const ok = await _sincronizarCargoTarjetasEntrada(jugador, statId, amarillas, rojas);
+    if (!ok) return; // canceló el diálogo: no se guarda el cambio
   }
 
   s.goles = goles; s.amarillas = amarillas; s.rojas = rojas;
@@ -644,6 +626,9 @@ async function eliminarStatEntry(statId) {
   if (!ok) return;
 
   const { equipo, jugador } = s;
+  const jugadorObj = jugadoresActual.find(j => j.equipo === equipo && j.nombre === jugador);
+  if (jugadorObj) await _sincronizarCargoTarjetasEntrada(jugadorObj, statId, 0, 0); // baja a 0: nunca pregunta
+
   statsActual = statsActual.filter(x => x.id !== statId);
   guardarStatsLocal(statsActual);
 
