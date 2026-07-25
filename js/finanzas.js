@@ -177,21 +177,15 @@ function _obtenerEntradaFinanzasJugador(jugadorId, crear) {
 }
 
 /* Fee de UNA entrada de stats (un partido), a partir SOLO de los datos de ese
-   partido — nunca acumulado con otros:
-     rojas_por_conversion = floor(amarillas / 2)   → doble amarilla = expulsión
-     amarillas_sueltas    = amarillas % 2
-     rojas_directas       = rojas_guardadas - rojas_por_conversion
-   Se resta rojas_por_conversion de lo guardado en "Rojas" porque el formulario
-   de Estadísticas ya auto-completa ese campo a 1 cuando amarillas llega a 2
-   (la conversión queda "horneada" ahí) — sin este ajuste se cobraría la misma
-   roja dos veces (una como conversión, otra como directa). */
+   partido — nunca acumulado con otros. Si hay roja de cualquier tipo (directa,
+   ingresada en el campo "Rojas", o por conversión de 2 amarillas) se cobra
+   ÚNICAMENTE el precio de la roja — las amarillas de ese mismo partido no se
+   cobran aparte. Solo se cobran las amarillas cuando NO hay ninguna roja. */
 function _feeEstandarEntrada(s, precioAmarilla, precioRoja) {
-  const amarillas          = Number(s.amarillas) || 0;
-  const rojasGuardadas     = Number(s.rojas) || 0;
-  const rojasPorConversion = Math.floor(amarillas / 2);
-  const amarillasSueltas   = amarillas % 2;
-  const rojasDirectas      = Math.max(0, rojasGuardadas - rojasPorConversion);
-  return (rojasDirectas + rojasPorConversion) * precioRoja + amarillasSueltas * precioAmarilla;
+  const amarillas = Number(s.amarillas) || 0;
+  const rojas     = Number(s.rojas) || 0;
+  if (rojas > 0 || amarillas >= 2) return precioRoja;
+  return amarillas * precioAmarilla;
 }
 
 /* Etiqueta de partido para el concepto del cargo — misma convención "J{n}"
