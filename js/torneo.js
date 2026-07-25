@@ -11,6 +11,9 @@ const LS_JUGADORES = 'ta_jugadores';
 const LS_HISTORIAL = 'ta_historial';
 const LS_FIN_EQUIPOS   = 'ta_finanzas_equipos';
 const LS_FIN_JUGADORES = 'ta_finanzas_jugadores';
+const LS_RESOLUCIONES            = 'ta_resoluciones';
+const LS_PLANTILLAS_RESOLUCION   = 'ta_plantillas_resolucion';
+const LS_RESOLUCIONES_CONTADOR   = 'ta_resoluciones_contador';
 
 // Estado global de la aplicación
 let torneoActual    = null;  // { sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja }
@@ -21,7 +24,10 @@ let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula,
 let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
 let finanzasEquiposActual   = []; // [{ equipo, abonos: [{id, monto, fecha}] }]
-let finanzasJugadoresActual = []; // [{ jugadorId, montoCubierto }]
+let finanzasJugadoresActual = []; // [{ jugadorId, cargos: [{id, origen, monto|montoCubierto, pagado}] }]
+let resolucionesActual  = []; // [{ id, numero, estado, fecha, tablaSanciones:[], articulosVariables:[] }]
+let plantillasActual    = []; // [{ id, nombre, texto }]
+let _resolucionesContador = 0; // solo sube; nunca se reutiliza un número ya asignado
 
 /* Detecta si un partido es en realidad un "descansa", incluso si quedó mal guardado
    (fixtures viejos de modalidad ida-vuelta podían guardar el descanso de la vuelta
@@ -57,7 +63,10 @@ function cargarTorneoLocal() {
 }
 
 function borrarTorneoLocal() {
-  [LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS, LS_JUGADORES, LS_HISTORIAL, LS_FIN_EQUIPOS, LS_FIN_JUGADORES].forEach(k => localStorage.removeItem(k));
+  [
+    LS_TORNEO, LS_FIXTURE, LS_STATS, LS_HORARIOS, LS_JUGADORES, LS_HISTORIAL, LS_FIN_EQUIPOS, LS_FIN_JUGADORES,
+    LS_RESOLUCIONES, LS_PLANTILLAS_RESOLUCION, LS_RESOLUCIONES_CONTADOR
+  ].forEach(k => localStorage.removeItem(k));
 }
 
 function guardarFixtureLocal(fixture) {
@@ -100,6 +109,13 @@ function cargarFinanzasEquiposLocal()     { try { return JSON.parse(localStorage
 function guardarFinanzasJugadoresLocal(f) { localStorage.setItem(LS_FIN_JUGADORES, JSON.stringify(f)); }
 function cargarFinanzasJugadoresLocal()   { try { return JSON.parse(localStorage.getItem(LS_FIN_JUGADORES) || '[]'); } catch (_) { return []; } }
 
+function guardarResolucionesLocal(r) { localStorage.setItem(LS_RESOLUCIONES, JSON.stringify(r)); }
+function cargarResolucionesLocal()   { try { return JSON.parse(localStorage.getItem(LS_RESOLUCIONES) || '[]'); } catch (_) { return []; } }
+function guardarPlantillasResolucionLocal(p) { localStorage.setItem(LS_PLANTILLAS_RESOLUCION, JSON.stringify(p)); }
+function cargarPlantillasResolucionLocal()   { try { return JSON.parse(localStorage.getItem(LS_PLANTILLAS_RESOLUCION) || '[]'); } catch (_) { return []; } }
+function guardarResolucionesContadorLocal(n) { localStorage.setItem(LS_RESOLUCIONES_CONTADOR, String(n)); }
+function cargarResolucionesContadorLocal()   { return parseInt(localStorage.getItem(LS_RESOLUCIONES_CONTADOR) || '0') || 0; }
+
 /* ──────────────────────────────────────────────
    CARGA INICIAL DE LA APP
    ────────────────────────────────────────────── */
@@ -113,7 +129,11 @@ function cargarDatosApp() {
   historialActual = cargarHistorialLocal();
   finanzasEquiposActual   = cargarFinanzasEquiposLocal();
   finanzasJugadoresActual = cargarFinanzasJugadoresLocal();
+  resolucionesActual      = cargarResolucionesLocal();
+  plantillasActual        = cargarPlantillasResolucionLocal();
+  _resolucionesContador   = cargarResolucionesContadorLocal();
   _asegurarIdsStats();
+  _migrarFinanzasJugadoresActual();
 
   if (!torneoActual) return;
 
@@ -130,6 +150,7 @@ function cargarDatosApp() {
   renderizarCalendario();
   renderizarHistorial();
   renderizarEquipos();
+  renderizarResoluciones();
 
   // Jornada actual: primera con partidos pendientes
   jornadaViendo = calcularJornadaActual();
@@ -225,7 +246,7 @@ async function crearTorneo() {
     // 1. Crear hoja de cálculo en Drive
     const sheetData = await crearSheet(
       `⚽ ${nombre}`,
-      ['Equipos', 'Fixture', 'Posiciones', 'Estadísticas', 'Jornadas', 'Finanzas_Equipos', 'Finanzas_Jugadores']
+      ['Equipos', 'Fixture', 'Posiciones', 'Estadísticas', 'Jornadas', 'Finanzas_Equipos', 'Finanzas_Jugadores', 'Resoluciones', 'Plantillas_Resolucion']
     );
     const sheetId = sheetData.spreadsheetId;
 
@@ -250,6 +271,9 @@ async function crearTorneo() {
     guardarHorariosLocal([]);
     guardarFinanzasEquiposLocal(finanzasEquipos);
     guardarFinanzasJugadoresLocal([]);
+    guardarResolucionesLocal([]);
+    guardarPlantillasResolucionLocal([]);
+    guardarResolucionesContadorLocal(0);
 
     mostrarExito(`¡Torneo "${nombre}" creado con éxito! 🎉`);
     mostrarPantalla('app');
@@ -295,8 +319,14 @@ async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture, finanz
   // Hoja Finanzas_Equipos (una fila por abono; ninguna al crear el torneo)
   const filasFinEquipos = [['Equipo', 'Monto', 'Fecha']];
 
-  // Hoja Finanzas_Jugadores (ninguna fila al crear el torneo, aún no hay tarjetas)
-  const filasFinJugadores = [['Jugador', 'Equipo', 'MontoCubierto']];
+  // Hoja Finanzas_Jugadores (ninguna fila al crear el torneo, aún no hay cargos)
+  const filasFinJugadores = [['Jugador', 'Equipo', 'Origen', 'Concepto', 'Monto', 'Pagado']];
+
+  // Hoja Resoluciones (ninguna fila al crear el torneo)
+  const filasResoluciones = [['Numero', 'Fecha', 'Estado', 'JSON']];
+
+  // Hoja Plantillas_Resolucion (ninguna fila al crear el torneo)
+  const filasPlantillas = [['ID', 'Nombre', 'Texto']];
 
   await escribirLotes(sheetId, [
     { rango: 'Equipos!A1',     valores: filasEquipos },
@@ -306,6 +336,8 @@ async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture, finanz
     { rango: 'Jornadas!A1',    valores: filasJornadas },
     { rango: 'Finanzas_Equipos!A1',   valores: filasFinEquipos   },
     { rango: 'Finanzas_Jugadores!A1', valores: filasFinJugadores },
+    { rango: 'Resoluciones!A1',          valores: filasResoluciones },
+    { rango: 'Plantillas_Resolucion!A1', valores: filasPlantillas   },
   ]);
 }
 
@@ -634,6 +666,7 @@ function mostrarSeccion(seccionId) {
   if (seccionId === 'sec-estadisticas') renderizarEstadisticas();
   if (seccionId === 'sec-jornadas')    renderizarCalendario();
   if (seccionId === 'sec-fixture')     renderizarFixture();
+  if (seccionId === 'sec-resoluciones') renderizarResoluciones();
 }
 
 /* Toggle sidebar — colapsa en desktop, abre/cierra en móvil */

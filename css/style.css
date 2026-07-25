@@ -1527,6 +1527,53 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
   font-weight: 700;
   color: var(--c-text-primary);
 }
+.subtitulo-card:first-child { margin-top: 0; }
+
+/* Acciones colapsables del detalle de equipo ("Gestionar abonos" / "Gestionar jugadores") */
+.accion-colapsable { margin-bottom: 1.25rem; }
+.accion-colapsable:last-child { margin-bottom: 0; }
+
+.btn-accion-equipo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--c-bg-card);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radio-s);
+  padding: .9rem 1.1rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  transition: border-color var(--t), background var(--t);
+}
+.btn-accion-equipo:hover  { border-color: var(--c-primary); background: var(--c-surface); }
+.btn-accion-equipo .izq   { display: flex; align-items: center; gap: .6rem; }
+.btn-accion-equipo .icono { color: var(--c-primary); font-size: 1.1rem; }
+.btn-accion-equipo .chevron { color: var(--c-text-muted); transition: transform var(--t); }
+.btn-accion-equipo.abierto .chevron { transform: rotate(180deg); }
+.btn-accion-equipo .contador {
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  font-size: .75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .15rem .55rem;
+  margin-left: .5rem;
+}
+[data-theme="dark"] .btn-accion-equipo .contador { background: rgba(255,255,255,.08); }
+
+.panel-colapsable {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-top: none;
+  border-radius: 0 0 var(--radio-s) var(--radio-s);
+  padding: 1.25rem;
+  margin-top: -1px;
+  animation: detalleIn .15s ease;
+}
 
 /* ──────────────────────────────────────────────
    DIÁLOGO DE CONFIRMACIÓN (reemplaza confirm() nativo)
@@ -1580,6 +1627,271 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 .confirm-acciones button {
   padding: .7rem 1.5rem;
   font-size: .95rem;
+}
+
+/* ──────────────────────────────────────────────
+   RESOLUCIONES — pestañas
+   ────────────────────────────────────────────── */
+.res-tabs {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--c-border);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0;
+}
+.res-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: .6rem .9rem;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: color var(--t), border-color var(--t);
+}
+.res-tab-btn:hover  { color: var(--c-primary); }
+.res-tab-btn.activo { color: var(--c-primary); border-bottom-color: var(--c-primary); }
+
+.res-tab-panel.oculto { display: none; }
+
+/* ──────────────────────────────────────────────
+   RESOLUCIONES — constructor (formulario + vista previa)
+   ────────────────────────────────────────────── */
+.res-constructor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .res-constructor-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.res-form-subtitulo {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  margin: 1.25rem 0 .6rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.res-form-subtitulo:first-child { margin-top: 0; }
+
+.res-botones-agregar-articulo,
+.res-botones-publicar,
+.res-botones-plantilla {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.res-botones-publicar { margin-top: 1.5rem; }
+
+.res-tabla-form select,
+.res-tabla-form input {
+  width: 100%;
+  min-width: 110px;
+  padding: 5px 7px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radio-s);
+  background: var(--c-bg);
+  color: var(--c-text-primary);
+  font-family: inherit;
+  font-size: .82rem;
+}
+
+.res-articulo-editor-item {
+  background: var(--c-surface);
+  border-radius: var(--radio-s);
+  padding: .75rem .9rem;
+  margin-bottom: .6rem;
+}
+.res-articulo-editor-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .4rem;
+}
+.res-articulo-chip-mini {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-primary);
+}
+.res-articulo-editor-acciones { display: flex; gap: .3rem; }
+.res-articulo-editor-texto {
+  font-size: .85rem;
+  color: var(--c-text-primary);
+  white-space: pre-line;
+}
+
+.res-mini-form {
+  background: var(--c-bg);
+  border: 1px dashed var(--c-border);
+  border-radius: var(--radio-s);
+  padding: .85rem 1rem;
+  margin-top: .5rem;
+}
+
+.res-preview-col { position: sticky; top: 1rem; }
+.res-preview-etiqueta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-bottom: .6rem;
+}
+
+/* ──────────────────────────────────────────────
+   RESOLUCIONES — documento (vista previa, histórico y PDF)
+   ────────────────────────────────────────────── */
+.res-documento {
+  background: var(--c-bg-card);
+  border-radius: var(--radio);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--sombra-m);
+  overflow: hidden;
+}
+
+.res-doc-encabezado {
+  background: linear-gradient(135deg, var(--c-primary-deeper), var(--c-primary-dark));
+  color: #fff;
+  padding: 1.75rem 1.75rem 1.4rem;
+  text-align: center;
+}
+.res-doc-torneo {
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+.res-doc-titulo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-top: .35rem;
+  text-wrap: balance;
+}
+.res-doc-fecha-pill {
+  display: inline-block;
+  margin-top: .65rem;
+  padding: .28rem .8rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.15);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.res-doc-cuerpo { padding: 1.75rem; }
+
+.res-doc-intro {
+  font-size: .88rem;
+  color: var(--c-text-secondary);
+  margin-bottom: 1.25rem;
+}
+
+.res-doc-considerando {
+  background: var(--c-surface);
+  border-left: 4px solid var(--c-primary);
+  border-radius: 0 var(--radio-s) var(--radio-s) 0;
+  padding: .9rem 1.1rem;
+  margin-bottom: 1.75rem;
+  font-size: .85rem;
+  color: var(--c-text-primary);
+}
+.res-considerando-cab {
+  display: block;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--c-primary);
+  margin-bottom: .3rem;
+}
+
+.res-articulo { margin-bottom: 1.6rem; }
+.res-articulo:last-of-type { margin-bottom: 0; }
+
+.res-articulo-cab {
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  margin-bottom: .55rem;
+}
+.res-articulo-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: 1.45rem;
+  padding: 0 .45rem;
+  border-radius: 999px;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+}
+.res-articulo-titulo {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.res-articulo-texto {
+  font-size: .88rem;
+  color: var(--c-text-primary);
+}
+
+.res-tabla-wrap { overflow-x: auto; border-radius: var(--radio-s); border: 1px solid var(--c-border); }
+table.res-sanciones { width: 100%; border-collapse: collapse; font-size: .8rem; min-width: 620px; }
+table.res-sanciones thead tr { background: var(--c-primary-deeper); }
+table.res-sanciones th {
+  color: #fff;
+  padding: .6rem .55rem;
+  font-weight: 700;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  text-align: center;
+  white-space: nowrap;
+}
+table.res-sanciones td {
+  padding: .6rem .55rem;
+  text-align: center;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text-primary);
+}
+table.res-sanciones tbody tr:last-child td { border-bottom: none; }
+table.res-sanciones tbody tr:nth-child(even) td { background: var(--c-surface); }
+table.res-sanciones td.jugador { text-align: left; font-weight: 700; }
+table.res-sanciones td.equipo-tag { font-size: .74rem; font-weight: 700; color: var(--c-text-secondary); }
+table.res-sanciones td.sancion { text-align: left; }
+table.res-sanciones td.multa { font-weight: 700; font-variant-numeric: tabular-nums; }
+table.res-sanciones td.multa.sin-multa { color: var(--c-text-muted); font-weight: 400; }
+
+.res-doc-pie {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 2px solid var(--c-border);
+  text-align: center;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--c-text-secondary);
+  letter-spacing: .02em;
 }
 
 /* ──────────────────────────────────────────────

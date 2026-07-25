@@ -163,7 +163,7 @@ async function guardarEstadistica() {
     return;
   }
 
-  const nuevaStat = { id: _nuevoIdStat(), jornada, partidoId, equipo, jugador, goles, amarillas, rojas };
+  const nuevaStat = { id: _nuevoIdStat(), jornada, partidoId, equipo, jugador, goles, amarillas, rojas, sancionado: false };
 
   mostrarCarga('Guardando estadística...');
   try {

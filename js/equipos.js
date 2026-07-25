@@ -4,7 +4,10 @@
    y tarjetas por partido) y finanzas (inscripción + multas).
    ============================================= */
 
-let _equipoExpandido = null; // equipo con el panel de detalle abierto
+let _equipoExpandido = null;      // equipo con el panel de detalle abierto
+let _panelAbonosAbierto = false;    // "Gestionar abonos" colapsable, dentro del detalle de equipo
+let _panelJugadoresAbierto = false; // "Gestionar jugadores" colapsable, dentro del detalle de equipo
+let _jugadorModalAbierto = null;    // id del jugador con el modal de detalle abierto (o null)
 
 /* Convierte el nombre de un equipo en un id seguro para usar en el DOM */
 function _slugEquipo(equipo) {
@@ -99,10 +102,10 @@ function _botonEstadoEquipo(equipoJs, estado, abierto) {
   </button>`;
 }
 
-/* Pill de estado de pago de un jugador con tarjetas — tocarlo alterna Pagado/Pendiente directamente */
-function _botonEstadoPago(jugadorId, pagado) {
+/* Pill de estado de un cargo (tarjetas o resolución) — tocarlo alterna Pagado/Pendiente directamente */
+function _botonEstadoPago(jugadorId, cargoId, pagado) {
   const clase = pagado ? 'fin-badge-pagado' : 'fin-badge-pendiente';
-  return `<button class="fin-badge fin-badge-clickable ${clase}" onclick="toggleJugadorPagado('${jugadorId}')" title="Toca para marcar como ${pagado ? 'pendiente' : 'pagado'}">
+  return `<button class="fin-badge fin-badge-clickable ${clase}" onclick="toggleCargoJugador('${jugadorId}', '${cargoId}')" title="Toca para marcar como ${pagado ? 'pendiente' : 'pagado'}">
     ${pagado ? 'Pagado' : 'Pendiente'}
   </button>`;
 }
@@ -110,7 +113,19 @@ function _botonEstadoPago(jugadorId, pagado) {
 /* Expande o colapsa el panel de gestión de un equipo (jugadores + finanzas) */
 function toggleDetalleEquipo(equipo) {
   _equipoExpandido = (_equipoExpandido === equipo) ? null : equipo;
+  _panelAbonosAbierto = false;
+  _panelJugadoresAbierto = false;
   renderizarEquipos();
+}
+
+function toggleGestionAbonos() {
+  _panelAbonosAbierto = !_panelAbonosAbierto;
+  renderizarDetalleEquipo(_equipoExpandido);
+}
+
+function toggleGestionJugadores() {
+  _panelJugadoresAbierto = !_panelJugadoresAbierto;
+  renderizarDetalleEquipo(_equipoExpandido);
 }
 
 /* ──────────────────────────────────────────────
@@ -125,54 +140,8 @@ function renderizarDetalleEquipo(equipo) {
   if (!eq) { panel.innerHTML = ''; return; }
 
   const equipoJs = equipo.replace(/'/g, "\\'");
-
   const fin = finanzasEquiposActual.find(f => f.equipo === equipo) || { abonos: [] };
-  const abonosOrdenados = [...fin.abonos].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
-  const filasAbonos = abonosOrdenados.map(a => `
-    <div class="historial-item">
-      <span class="historial-fecha">${a.fecha || '–'}</span>
-      <span class="historial-partido">${_formatoMoneda(a.monto)}</span>
-      <button class="btn-peligro btn-xs" onclick="eliminarAbono('${equipoJs}', '${a.id}')" title="Eliminar abono">
-        <i class="bi bi-trash3-fill"></i>
-      </button>
-    </div>
-  `).join('') || '<p class="sin-datos">Sin abonos registrados.</p>';
-
-  const jugadoresConTarjetas = calcularFinanzasJugadores(equipo);
-  const filasTarjetas = jugadoresConTarjetas.map(j => `
-    <tr>
-      <td class="col-camisa">${j.numeroCamisa || '–'}</td>
-      <td><strong>${j.jugador}</strong></td>
-      <td>${j.cargosTexto}</td>
-      <td class="col-num">${_formatoMoneda(j.monto)}</td>
-      <td>${_botonEstadoPago(j.jugadorId, j.pagado)}</td>
-    </tr>
-  `).join('');
-
-  const roster = jugadoresActual
-    .filter(j => j.equipo === equipo)
-    .map(j => ({ ...j, ..._statsJugador(j.equipo, j.nombre) }))
-    .sort((a, b) => b.goles - a.goles || a.nombre.localeCompare(b.nombre));
-
-  const filasRoster = roster.map(j => `
-    <tr id="jrow-${j.id}">
-      <td class="col-camisa">${j.numeroCamisa || '–'}</td>
-      <td><strong>${j.nombre}</strong></td>
-      <td>${j.cedula || '–'}</td>
-      <td>${j.celular || '–'}</td>
-      <td class="col-num">${j.goles}</td>
-      <td class="col-num">${j.amarillas}</td>
-      <td class="col-num">${j.rojas}</td>
-      <td class="col-acciones">
-        <button class="btn-secundario btn-xs" onclick="toggleHistorialStatsJugador('${j.id}')" title="Ver goles y tarjetas por partido"><i class="bi bi-list-ul"></i></button>
-        <button class="btn-secundario btn-xs" onclick="iniciarEditarJugador('${j.id}')" title="Editar datos"><i class="bi bi-pencil-fill"></i></button>
-        <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
-      </td>
-    </tr>
-    <tr id="stats-hist-row-${j.id}" class="oculto">
-      <td colspan="8"><div id="stats-hist-${j.id}"></div></td>
-    </tr>
-  `).join('');
+  const roster = jugadoresActual.filter(j => j.equipo === equipo);
 
   panel.innerHTML = `
     <div class="equipo-detalle-panel">
@@ -181,14 +150,52 @@ function renderizarDetalleEquipo(equipo) {
         <button class="btn-secundario btn-pequeño" onclick="toggleDetalleEquipo('${equipoJs}')"><i class="bi bi-x-lg"></i> Cerrar</button>
       </div>
 
-      <div class="jugadores-card">
-        <h4><i class="bi bi-cash-coin"></i> Finanzas del equipo</h4>
-        <div class="cards-grid" style="margin:.75rem 0 1rem">
-          <div class="card-stat"><div class="card-stat-num">${_formatoMoneda(eq.inscripcion)}</div><div class="card-stat-label">Inscripción</div></div>
-          <div class="card-stat"><div class="card-stat-num">${_formatoMoneda(eq.abonado)}</div><div class="card-stat-label">Abonado</div></div>
-          <div class="card-stat"><div class="card-stat-num">${_formatoMoneda(eq.saldo)}</div><div class="card-stat-label">Saldo</div></div>
-        </div>
+      ${_htmlResumenFinancieroEquipo(eq)}
+      ${_htmlAccionGestionarAbonos(equipoJs, fin)}
+      ${_htmlAccionGestionarJugadores(equipoJs, equipo, roster)}
+    </div>
+  `;
+}
 
+/* Paso 2: lo primero que se ve al elegir un equipo — la plata, de un vistazo */
+function _htmlResumenFinancieroEquipo(eq) {
+  const clase = eq.estado === 'Pagado' ? 'fin-badge-pagado' : (eq.estado === 'Parcial' ? 'fin-badge-parcial' : 'fin-badge-pendiente');
+  return `
+    <div class="jugadores-card">
+      <div class="seccion-header" style="margin-bottom:1rem">
+        <h4 style="font-size:1.05rem"><i class="bi bi-cash-coin"></i> Resumen financiero</h4>
+        <span class="fin-badge ${clase}">${eq.estado === 'Parcial' ? 'Abono parcial' : eq.estado}</span>
+      </div>
+      <div class="cards-grid">
+        <div class="card-stat"><div class="card-stat-num">${_formatoMoneda(eq.inscripcion)}</div><div class="card-stat-label">Inscripción</div></div>
+        <div class="card-stat"><div class="card-stat-num">${_formatoMoneda(eq.abonado)}</div><div class="card-stat-label">Abonado</div></div>
+        <div class="card-stat"><div class="card-stat-num" style="${eq.saldo > 0 ? 'color:var(--c-danger)' : ''}">${_formatoMoneda(eq.saldo)}</div><div class="card-stat-label">Saldo pendiente</div></div>
+      </div>
+    </div>
+  `;
+}
+
+/* Paso 2b: registrar abonos + ver historial — colapsado por defecto, reutiliza
+   exactamente la misma lógica de guardarAbono/eliminarAbono de siempre */
+function _htmlAccionGestionarAbonos(equipoJs, fin) {
+  const abierto = _panelAbonosAbierto;
+  const cantidad = fin.abonos.length;
+
+  let panelInterno = '';
+  if (abierto) {
+    const abonosOrdenados = [...fin.abonos].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+    const filasAbonos = abonosOrdenados.map(a => `
+      <div class="historial-item">
+        <span class="historial-fecha">${a.fecha || '–'}</span>
+        <span class="historial-partido">${_formatoMoneda(a.monto)}</span>
+        <button class="btn-peligro btn-xs" onclick="eliminarAbono('${equipoJs}', '${a.id}')" title="Eliminar abono">
+          <i class="bi bi-trash3-fill"></i>
+        </button>
+      </div>
+    `).join('') || '<p class="sin-datos">Sin abonos registrados.</p>';
+
+    panelInterno = `
+      <div class="panel-colapsable">
         <div class="form-fila" style="margin-bottom:.75rem">
           <div class="form-grupo">
             <label for="fin-abono-monto">Monto del abono</label>
@@ -202,24 +209,57 @@ function renderizarDetalleEquipo(equipo) {
         <button class="btn-principal btn-pequeño" onclick="guardarAbono('${equipoJs}')" style="margin-bottom:1.25rem">
           <i class="bi bi-floppy-fill"></i> Registrar abono
         </button>
-
         <h5 class="subtitulo-card">Historial de abonos</h5>
         <div class="historial-container">${filasAbonos}</div>
-
-        ${jugadoresConTarjetas.length > 0 ? `
-          <h5 class="subtitulo-card" style="margin-top:1.25rem"><i class="bi bi-square-fill"></i> Multas por tarjeta</h5>
-          <p class="info-texto" style="margin-bottom:.5rem">Toca el estado para marcarlo como pagado o pendiente.</p>
-          <div class="tabla-wrapper">
-            <table class="tabla-datos tabla-compacta">
-              <thead><tr><th>#</th><th>Jugador</th><th>Cargos</th><th>Monto</th><th>Estado</th></tr></thead>
-              <tbody>${filasTarjetas}</tbody>
-            </table>
-          </div>
-        ` : ''}
       </div>
+    `;
+  }
 
-      <div class="jugadores-card">
-        <h4><i class="bi bi-people-fill"></i> Plantilla de jugadores</h4>
+  return `
+    <div class="accion-colapsable">
+      <button class="btn-accion-equipo ${abierto ? 'abierto' : ''}" onclick="toggleGestionAbonos()">
+        <span class="izq"><i class="bi bi-wallet2 icono"></i> Gestionar abonos <span class="contador">${cantidad} registrado${cantidad === 1 ? '' : 's'}</span></span>
+        <i class="bi bi-chevron-down chevron"></i>
+      </button>
+      ${panelInterno}
+    </div>
+  `;
+}
+
+/* Paso 3: plantilla de jugadores — colapsado por defecto. Cada fila trae goles,
+   tarjetas, deuda total (tarjetas + multas de resolución) y su estado; el detalle
+   completo (por partido, por cargo) vive en el modal de "Ver detalle". */
+function _htmlAccionGestionarJugadores(equipoJs, equipo, roster) {
+  const abierto = _panelJugadoresAbierto;
+
+  let panelInterno = '';
+  if (abierto) {
+    const filasRoster = roster
+      .map(j => ({ ...j, ..._statsJugador(j.equipo, j.nombre), ...{ _resumen: _resumenCargosJugador(j.id, equipo) } }))
+      .sort((a, b) => b.goles - a.goles || a.nombre.localeCompare(b.nombre))
+      .map(j => {
+        const claseEstado = j._resumen.estado === 'Pagado' ? 'fin-badge-pagado' : (j._resumen.estado === 'Parcial' ? 'fin-badge-parcial' : 'fin-badge-pendiente');
+        return `
+        <tr id="jrow-${j.id}">
+          <td class="col-camisa">${j.numeroCamisa || '–'}</td>
+          <td><strong>${j.nombre}</strong></td>
+          <td>${j.cedula || '–'}</td>
+          <td>${j.celular || '–'}</td>
+          <td class="col-num">${j.goles}</td>
+          <td class="col-num">${j.amarillas}</td>
+          <td class="col-num">${j.rojas}</td>
+          <td class="col-num">${_formatoMoneda(j._resumen.total)}</td>
+          <td>${j._resumen.cargos.length > 0 ? `<span class="fin-badge ${claseEstado}">${j._resumen.estado === 'Parcial' ? 'Parcial' : j._resumen.estado}</span>` : '<span class="sin-datos" style="padding:0">–</span>'}</td>
+          <td class="col-acciones">
+            <button class="btn-secundario btn-xs" onclick="abrirDetalleJugador('${j.id}')" title="Ver detalle"><i class="bi bi-eye-fill"></i></button>
+            <button class="btn-secundario btn-xs" onclick="iniciarEditarJugador('${j.id}')" title="Editar datos"><i class="bi bi-pencil-fill"></i></button>
+            <button class="btn-peligro   btn-xs" onclick="eliminarJugador('${j.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
+
+    panelInterno = `
+      <div class="panel-colapsable">
         ${roster.length === 0 ? '<p class="sin-datos">Sin jugadores registrados. Agrégalos abajo.</p>' : `
           <div class="tabla-wrapper">
             <table class="tabla-datos tabla-compacta">
@@ -232,13 +272,15 @@ function renderizarDetalleEquipo(equipo) {
                   <th title="Goles"><i class="bi bi-award-fill"></i></th>
                   <th title="Amarillas"><i class="bi bi-square-fill" style="color:#D4820A"></i></th>
                   <th title="Rojas"><i class="bi bi-square-fill" style="color:#C0392B"></i></th>
+                  <th title="Deuda por tarjetas y multas">Deuda</th>
+                  <th>Estado</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>${filasRoster}</tbody>
             </table>
           </div>
-          <p class="info-texto" style="margin-top:.5rem"><i class="bi bi-list-ul"></i> Toca este ícono en un jugador para ver o corregir sus goles/tarjetas partido por partido.</p>
+          <p class="info-texto" style="margin-top:.5rem"><i class="bi bi-eye-fill"></i> "Ver detalle" muestra los goles y tarjetas partido por partido, y cada cargo con su propio estado de pago.</p>
         `}
 
         <h5 class="subtitulo-card" style="margin-top:1.25rem"><i class="bi bi-person-plus-fill"></i> Agregar jugador</h5>
@@ -262,8 +304,33 @@ function renderizarDetalleEquipo(equipo) {
         </div>
         <button class="btn-principal btn-pequeño" onclick="guardarNuevoJugadorEquipo('${equipoJs}')"><i class="bi bi-person-plus-fill"></i> Agregar jugador</button>
       </div>
+    `;
+  }
+
+  return `
+    <div class="accion-colapsable">
+      <button class="btn-accion-equipo ${abierto ? 'abierto' : ''}" onclick="toggleGestionJugadores()">
+        <span class="izq"><i class="bi bi-people-fill icono"></i> Gestionar jugadores <span class="contador">${roster.length} jugador${roster.length === 1 ? '' : 'es'}</span></span>
+        <i class="bi bi-chevron-down chevron"></i>
+      </button>
+      ${panelInterno}
     </div>
   `;
+}
+
+/* Deuda total (tarjetas + multas de resolución) y estado resumen de un jugador.
+   Un jugador puede tener varios cargos independientes (ver calcularFinanzasJugadores);
+   esto solo los agrupa para la fila del roster — el detalle de cada uno, con su
+   propio toggle, vive en el modal (abrirDetalleJugador). */
+function _resumenCargosJugador(jugadorId, equipo) {
+  const cargos = calcularFinanzasJugadores(equipo).filter(c => c.jugadorId === jugadorId);
+  const total  = cargos.reduce((s, c) => s + c.monto, 0);
+  let estado;
+  if (cargos.length === 0) estado = 'Pagado';
+  else if (cargos.every(c => c.pagado)) estado = 'Pagado';
+  else if (cargos.every(c => !c.pagado)) estado = 'Pendiente';
+  else estado = 'Parcial';
+  return { total, estado, cargos };
 }
 
 /* ──────────────────────────────────────────────
@@ -359,10 +426,15 @@ function _nuevoIdStat() {
   return 'S_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-/* Migración silenciosa: asegura que toda entrada de statsActual tenga un id estable */
+/* Migración silenciosa: asegura que toda entrada de statsActual tenga un id estable
+   y que las que tienen roja tengan el campo `sancionado` (para la lista de
+   pendientes de sancionar en Resoluciones). */
 function _asegurarIdsStats() {
   let cambiado = false;
-  statsActual.forEach(s => { if (!s.id) { s.id = _nuevoIdStat(); cambiado = true; } });
+  statsActual.forEach(s => {
+    if (!s.id) { s.id = _nuevoIdStat(); cambiado = true; }
+    if (s.rojas > 0 && typeof s.sancionado === 'undefined') { s.sancionado = false; cambiado = true; }
+  });
   if (cambiado) guardarStatsLocal(statsActual);
 }
 
@@ -373,12 +445,15 @@ function _entradasStatsJugador(equipo, nombre) {
     .sort((a, b) => a.jornada - b.jornada);
 }
 
-function toggleHistorialStatsJugador(jugadorId) {
-  const fila = document.getElementById(`stats-hist-row-${jugadorId}`);
-  if (!fila) return;
-  const vaAbrir = fila.classList.contains('oculto');
-  fila.classList.toggle('oculto');
-  if (vaAbrir) _renderHistorialStatsJugador(jugadorId);
+/* Busca si una tarjeta roja (por su statsId) ya quedó incluida en alguna
+   resolución publicada, para mostrarlo en el modal de detalle del jugador. */
+function _resolucionQueSanciono(statsId) {
+  if (!statsId || typeof resolucionesActual === 'undefined') return null;
+  for (const r of resolucionesActual) {
+    if (r.estado !== 'publicada') continue;
+    if (r.tablaSanciones.some(f => f.statsId === statsId)) return r.numero;
+  }
+  return null;
 }
 
 function _renderHistorialStatsJugador(jugadorId) {
@@ -394,18 +469,28 @@ function _renderHistorialStatsJugador(jugadorId) {
 
   cont.innerHTML = `
     <table class="tabla-datos tabla-compacta" style="margin:.5rem 0">
-      <thead><tr><th style="text-align:left">Partido</th><th>Goles</th><th>Am.</th><th>Roj.</th><th></th></tr></thead>
+      <thead><tr><th style="text-align:left">Partido</th><th>Goles</th><th>Am.</th><th>Roj.</th><th>Sanción</th><th></th></tr></thead>
       <tbody>
         ${entradas.map(s => {
           const partido = fixtureActual.find(p => p.id === s.partidoId);
           const rival = partido ? (partido.local === jugador.equipo ? partido.visitante : partido.local) : null;
           const etiqueta = partido ? `J${s.jornada} · vs ${rival}` : 'Ajuste manual (sin partido)';
+
+          let sancionTag = '<span class="sin-datos" style="padding:0">–</span>';
+          if (s.rojas > 0) {
+            const numeroRes = _resolucionQueSanciono(s.id);
+            sancionTag = s.sancionado
+              ? `<span class="fin-badge fin-badge-pagado">Sancionada${numeroRes ? ' #' + numeroRes : ''}</span>`
+              : '<span class="fin-badge fin-badge-pendiente">Pendiente</span>';
+          }
+
           return `
             <tr id="stat-row-${s.id}">
               <td style="text-align:left">${etiqueta}</td>
               <td class="col-num">${s.goles}</td>
               <td class="col-num">${s.amarillas}</td>
               <td class="col-num">${s.rojas}</td>
+              <td>${sancionTag}</td>
               <td class="col-acciones">
                 <button class="btn-secundario btn-xs" onclick="iniciarEditarStatEntry('${s.id}')" title="Editar"><i class="bi bi-pencil-fill"></i></button>
                 <button class="btn-peligro   btn-xs" onclick="eliminarStatEntry('${s.id}')" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
@@ -429,6 +514,7 @@ function iniciarEditarStatEntry(statId) {
     <td><input type="number" id="es-g-${statId}" value="${s.goles}"     min="0" max="20" class="input-edit input-edit-xs"></td>
     <td><input type="number" id="es-a-${statId}" value="${s.amarillas}" min="0" max="2"  class="input-edit input-edit-xs"></td>
     <td><input type="number" id="es-r-${statId}" value="${s.rojas}"     min="0" max="1"  class="input-edit input-edit-xs"></td>
+    <td>–</td>
     <td class="col-acciones">
       <button class="btn-principal btn-xs" onclick="guardarEdicionStatEntry('${statId}')"><i class="bi bi-check-lg"></i></button>
       <button class="btn-secundario btn-xs" onclick="_renderHistorialStatsJugador('${jugador?.id}')"><i class="bi bi-x-lg"></i></button>
@@ -464,6 +550,7 @@ function guardarEdicionStatEntry(statId) {
 
   renderizarEquipos();
   renderizarEstadisticas();
+  _refrescarModalJugadorPorEquipoNombre(s.equipo, s.jugador);
   mostrarExito('Estadística actualizada');
 }
 
@@ -477,12 +564,108 @@ async function eliminarStatEntry(statId) {
   });
   if (!ok) return;
 
+  const { equipo, jugador } = s;
   statsActual = statsActual.filter(x => x.id !== statId);
   guardarStatsLocal(statsActual);
 
   renderizarEquipos();
   renderizarEstadisticas();
+  _refrescarModalJugadorPorEquipoNombre(equipo, jugador);
   mostrarExito('Registro eliminado');
+}
+
+/* ──────────────────────────────────────────────
+   MODAL DE DETALLE DE JUGADOR
+   Un solo lugar para ver TODO de un jugador: cada cargo (tarjetas y multas de
+   resolución) con su propio estado de pago, y el historial de goles/tarjetas
+   partido por partido con su estado de sanción. No cambia ningún cálculo — solo
+   junta en una vista lo que ya vive en calcularFinanzasJugadores() y statsActual.
+   ────────────────────────────────────────────── */
+
+function abrirDetalleJugador(jugadorId) {
+  const jugador = jugadoresActual.find(j => j.id === jugadorId);
+  if (!jugador) return;
+  cerrarDetalleJugador(); // por si quedó otro abierto
+  _jugadorModalAbierto = jugadorId;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'jugador-detalle-overlay';
+  overlay.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Detalle de ${jugador.nombre}">
+      <div class="modal-header">
+        <h2><i class="bi bi-person-fill"></i> ${jugador.nombre} <span style="font-weight:400;font-size:.78rem;opacity:.85">— ${jugador.equipo}</span></h2>
+        <button class="modal-cerrar" onclick="cerrarDetalleJugador()" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <h4 class="subtitulo-card"><i class="bi bi-cash-coin"></i> Cargos y multas</h4>
+        <div id="modal-jugador-cargos"></div>
+
+        <h4 class="subtitulo-card" style="margin-top:1.5rem"><i class="bi bi-list-ul"></i> Goles y tarjetas por partido</h4>
+        <div id="stats-hist-${jugadorId}"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) cerrarDetalleJugador(); });
+  document.addEventListener('keydown', _escapeCierraModalJugador);
+
+  _renderizarCargosModalJugador(jugadorId);
+  _renderHistorialStatsJugador(jugadorId);
+}
+
+function _escapeCierraModalJugador(e) {
+  if (e.key === 'Escape') cerrarDetalleJugador();
+}
+
+function cerrarDetalleJugador() {
+  _jugadorModalAbierto = null;
+  document.removeEventListener('keydown', _escapeCierraModalJugador);
+  document.getElementById('jugador-detalle-overlay')?.remove();
+}
+
+function _renderizarCargosModalJugador(jugadorId) {
+  const jugador = jugadoresActual.find(j => j.id === jugadorId);
+  const cont = document.getElementById('modal-jugador-cargos');
+  if (!jugador || !cont) return;
+
+  const cargos = calcularFinanzasJugadores(jugador.equipo).filter(c => c.jugadorId === jugadorId);
+  if (cargos.length === 0) {
+    cont.innerHTML = '<p class="sin-datos">Sin cargos ni multas registradas.</p>';
+    return;
+  }
+
+  cont.innerHTML = `
+    <div class="tabla-wrapper">
+      <table class="tabla-datos tabla-compacta">
+        <thead><tr><th style="text-align:left">Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${cargos.map(c => `
+            <tr>
+              <td style="text-align:left">${c.concepto}</td>
+              <td class="col-num">${_formatoMoneda(c.monto)}</td>
+              <td>${_botonEstadoPago(c.jugadorId, c.cargoId, c.pagado)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* Llamado desde toggleCargoJugador (finanzas.js) tras alternar un pago, para que
+   el modal se vea actualizado si está abierto para ese mismo jugador */
+function _refrescarModalJugadorSiAbierto(jugadorId) {
+  if (_jugadorModalAbierto !== jugadorId) return;
+  _renderizarCargosModalJugador(jugadorId);
+}
+
+/* statsActual identifica al jugador por equipo+nombre, no por id — este helper
+   resuelve el id y refresca el historial del modal si está abierto para él */
+function _refrescarModalJugadorPorEquipoNombre(equipo, nombre) {
+  const jugador = jugadoresActual.find(j => j.equipo === equipo && j.nombre === nombre);
+  if (jugador && _jugadorModalAbierto === jugador.id) _renderHistorialStatsJugador(jugador.id);
 }
 
 /* ──────────────────────────────────────────────

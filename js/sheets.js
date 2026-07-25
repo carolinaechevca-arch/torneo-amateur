@@ -125,6 +125,37 @@ async function eliminarArchivoEnDrive(fileId) {
   }
 }
 
+/* Crea una hoja (tab) nueva dentro de un spreadsheet ya existente, si todavía no
+   existe. Necesario para torneos creados antes de agregar una sección nueva
+   (ej. "Resoluciones") que necesita su propia hoja de sincronización. */
+async function agregarHojaSiNoExiste(sheetId, nombreHoja) {
+  const token = obtenerToken();
+
+  const respGet = await fetch(`${SHEETS_BASE}/${sheetId}?fields=sheets.properties.title`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!respGet.ok) {
+    const err = await respGet.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'No se pudo leer la lista de hojas del spreadsheet');
+  }
+  const data = await respGet.json();
+  const existe = (data.sheets || []).some(s => s.properties?.title === nombreHoja);
+  if (existe) return;
+
+  const respAdd = await fetch(`${SHEETS_BASE}/${sheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: nombreHoja } } }] })
+  });
+  if (!respAdd.ok) {
+    const err = await respAdd.json().catch(() => ({}));
+    throw new Error(err.error?.message || `No se pudo crear la hoja "${nombreHoja}"`);
+  }
+}
+
 /* Escribe múltiples rangos en una sola llamada a la API (batchUpdate).
    `datos` = [{ rango: 'Hoja!A1', valores: [[...]] }, ...] */
 async function escribirLotes(sheetId, datos) {

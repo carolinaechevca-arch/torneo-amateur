@@ -49,34 +49,112 @@ function calcularFinanzasEquipos() {
   });
 }
 
-/* Jugadores con al menos una tarjeta cargada, con su monto total (amarillas+rojas)
-   y si ese monto ya está cubierto (comparando contra el "montoCubierto" guardado). */
+/* Un jugador tiene una lista de "cargos" en finanzasJugadoresActual:
+   - origen 'tarjetas': uno solo por jugador, id determinístico T_<jugadorId>.
+     Su monto siempre se recalcula en vivo desde statsActual (nunca se guarda fijo);
+     lo que se guarda es "montoCubierto" (el monto que había cuando se marcó pagado),
+     así que si después se le carga otra tarjeta, vuelve a verse "pendiente" solo.
+   - origen 'resolucion': uno por cada fila de sanciones con multa>0 al publicar una
+     Resolución. Su monto queda fijo para siempre; "pagado" es un booleano simple.
+   Ambos se normalizan aquí a la misma forma de fila para que la UI (equipos.js) los
+   pinte igual, cada uno con su propio pill de estado togglable. */
+
+/* Migración silenciosa: las entradas guardadas con la forma vieja ({ jugadorId,
+   montoCubierto }) se envuelven en la forma nueva ({ jugadorId, cargos: [...] }) */
+function _migrarFinanzasJugadoresActual() {
+  let cambiado = false;
+  finanzasJugadoresActual = finanzasJugadoresActual.map(f => {
+    if (Array.isArray(f.cargos)) return f;
+    cambiado = true;
+    const cargos = [];
+    if (typeof f.montoCubierto !== 'undefined') {
+      cargos.push({ id: `T_${f.jugadorId}`, origen: 'tarjetas', montoCubierto: Number(f.montoCubierto) || 0 });
+    }
+    return { jugadorId: f.jugadorId, cargos };
+  });
+  if (cambiado) guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
+}
+
+function _obtenerEntradaFinanzasJugador(jugadorId, crear) {
+  let entrada = finanzasJugadoresActual.find(f => f.jugadorId === jugadorId);
+  if (!entrada && crear) {
+    entrada = { jugadorId, cargos: [] };
+    finanzasJugadoresActual.push(entrada);
+  }
+  return entrada;
+}
+
+function _cargoTarjetasDeJugador(jugador) {
+  if (!torneoActual) return null;
+  const st = _statsJugador(jugador.equipo, jugador.nombre);
+  const monto = st.amarillas * (Number(torneoActual.precioAmarilla) || 0) + st.rojas * (Number(torneoActual.precioRoja) || 0);
+  if (monto <= 0) return null;
+
+  const entrada = finanzasJugadoresActual.find(f => f.jugadorId === jugador.id);
+  const cargoGuardado = entrada?.cargos.find(c => c.origen === 'tarjetas');
+  const montoCubierto = cargoGuardado ? Number(cargoGuardado.montoCubierto) || 0 : 0;
+
+  return {
+    cargoId:      `T_${jugador.id}`,
+    origen:       'tarjetas',
+    jugadorId:    jugador.id,
+    jugador:      jugador.nombre,
+    equipo:       jugador.equipo,
+    numeroCamisa: jugador.numeroCamisa,
+    concepto:     _textoCargos(st.amarillas, st.rojas),
+    monto,
+    pagado: montoCubierto >= monto
+  };
+}
+
+function _cargosResolucionDeJugador(jugador) {
+  const entrada = finanzasJugadoresActual.find(f => f.jugadorId === jugador.id);
+  if (!entrada) return [];
+  return entrada.cargos
+    .filter(c => c.origen === 'resolucion')
+    .map(c => ({
+      cargoId:      c.id,
+      origen:       'resolucion',
+      jugadorId:    jugador.id,
+      jugador:      jugador.nombre,
+      equipo:       jugador.equipo,
+      numeroCamisa: jugador.numeroCamisa,
+      concepto:     `Resolución #${c.resolucionNumero}${c.concepto ? ' · ' + c.concepto : ''}`,
+      monto:        Number(c.monto) || 0,
+      pagado:       !!c.pagado
+    }));
+}
+
+/* Todos los cargos pendientes/pagados de los jugadores (tarjetas + resoluciones),
+   uno por fila — un jugador con tarjetas Y una multa de resolución aparece dos veces. */
 function calcularFinanzasJugadores(equipoFiltro) {
   if (!torneoActual) return [];
-  const precioAmarilla = Number(torneoActual.precioAmarilla) || 0;
-  const precioRoja     = Number(torneoActual.precioRoja) || 0;
 
-  return jugadoresActual
+  const cargos = [];
+  jugadoresActual
     .filter(j => !equipoFiltro || j.equipo === equipoFiltro)
-    .map(j => {
-      const st = _statsJugador(j.equipo, j.nombre);
-      return { jugador: j, st, monto: st.amarillas * precioAmarilla + st.rojas * precioRoja };
-    })
-    .filter(({ st }) => st.amarillas > 0 || st.rojas > 0)
-    .map(({ jugador, st, monto }) => {
-      const finJ = finanzasJugadoresActual.find(f => f.jugadorId === jugador.id);
-      const montoCubierto = finJ ? Number(finJ.montoCubierto) || 0 : 0;
-      return {
-        jugadorId:    jugador.id,
-        jugador:      jugador.nombre,
-        equipo:       jugador.equipo,
-        numeroCamisa: jugador.numeroCamisa,
-        cargosTexto:  _textoCargos(st.amarillas, st.rojas),
-        monto,
-        pagado: monto > 0 && montoCubierto >= monto
-      };
-    })
-    .sort((a, b) => b.monto - a.monto);
+    .forEach(j => {
+      const cTarjetas = _cargoTarjetasDeJugador(j);
+      if (cTarjetas) cargos.push(cTarjetas);
+      cargos.push(..._cargosResolucionDeJugador(j));
+    });
+
+  return cargos.sort((a, b) => b.monto - a.monto);
+}
+
+/* Registra el cargo de una multa de Resolución para un jugador (no sincroniza:
+   quien publica la resolución hace un único sync al final por todas las filas). */
+function agregarCargoResolucion(jugadorId, resolucionNumero, concepto, monto) {
+  const entrada = _obtenerEntradaFinanzasJugador(jugadorId, true);
+  entrada.cargos.push({
+    id: `R_${resolucionNumero}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    origen: 'resolucion',
+    resolucionNumero,
+    concepto,
+    monto: Number(monto) || 0,
+    pagado: false
+  });
+  guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
 }
 
 /* ──────────────────────────────────────────────
@@ -135,27 +213,33 @@ async function eliminarAbono(equipo, abonoId) {
   }
 }
 
-/* Marca/desmarca a un jugador como pagado. Guarda el total cubierto (no un booleano)
-   para que, si después se le carga otra tarjeta, vuelva a verse "No pagado" solo.
-   Se dispara directamente al tocar el badge de estado (sin botón aparte). */
-async function toggleJugadorPagado(jugadorId) {
+/* Marca/desmarca un cargo puntual como pagado. Se dispara directamente al tocar
+   el pill de estado (sin botón aparte al lado).
+   - Cargos de tarjetas: se guarda el monto cubierto (no un booleano), para que si
+     después se le carga otra tarjeta, vuelva a verse "pendiente" solo.
+   - Cargos de resolución: booleano simple, el monto ya quedó fijo al publicar. */
+async function toggleCargoJugador(jugadorId, cargoId) {
   const jugador = jugadoresActual.find(j => j.id === jugadorId);
   if (!jugador || !torneoActual) return;
 
-  const st = _statsJugador(jugador.equipo, jugador.nombre);
-  const monto = st.amarillas * (Number(torneoActual.precioAmarilla) || 0) + st.rojas * (Number(torneoActual.precioRoja) || 0);
-
-  let entrada = finanzasJugadoresActual.find(f => f.jugadorId === jugadorId);
-  const yaPagado = !!entrada && Number(entrada.montoCubierto) >= monto && monto > 0;
-
-  if (!entrada) {
-    entrada = { jugadorId, montoCubierto: 0 };
-    finanzasJugadoresActual.push(entrada);
-  }
-  entrada.montoCubierto = yaPagado ? 0 : monto;
-
   mostrarCarga('Actualizando pago...');
   try {
+    if (cargoId.startsWith('T_')) {
+      const st = _statsJugador(jugador.equipo, jugador.nombre);
+      const monto = st.amarillas * (Number(torneoActual.precioAmarilla) || 0) + st.rojas * (Number(torneoActual.precioRoja) || 0);
+
+      const entrada = _obtenerEntradaFinanzasJugador(jugadorId, true);
+      let cargo = entrada.cargos.find(c => c.origen === 'tarjetas');
+      const yaPagado = !!cargo && Number(cargo.montoCubierto) >= monto && monto > 0;
+      if (!cargo) { cargo = { id: cargoId, origen: 'tarjetas', montoCubierto: 0 }; entrada.cargos.push(cargo); }
+      cargo.montoCubierto = yaPagado ? 0 : monto;
+    } else {
+      const entrada = _obtenerEntradaFinanzasJugador(jugadorId, false);
+      const cargo = entrada?.cargos.find(c => c.id === cargoId);
+      if (!cargo) return;
+      cargo.pagado = !cargo.pagado;
+    }
+
     guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
     await _sincronizarFinanzasSheets();
   } catch (err) {
@@ -163,6 +247,7 @@ async function toggleJugadorPagado(jugadorId) {
   } finally {
     ocultarCarga();
     renderizarEquipos();
+    _refrescarModalJugadorSiAbierto(jugadorId);
   }
 }
 
@@ -180,10 +265,9 @@ async function _sincronizarFinanzasSheets() {
   });
   await limpiarYEscribir(sheetId, 'Finanzas_Equipos', filasEquipos);
 
-  const filasJugadores = [['Jugador', 'Equipo', 'MontoCubierto']];
-  finanzasJugadoresActual.forEach(f => {
-    const jugador = jugadoresActual.find(j => j.id === f.jugadorId);
-    if (jugador) filasJugadores.push([jugador.nombre, jugador.equipo, f.montoCubierto]);
+  const filasJugadores = [['Jugador', 'Equipo', 'Origen', 'Concepto', 'Monto', 'Pagado']];
+  calcularFinanzasJugadores().forEach(c => {
+    filasJugadores.push([c.jugador, c.equipo, c.origen, c.concepto, c.monto, c.pagado ? 'Sí' : 'No']);
   });
   await limpiarYEscribir(sheetId, 'Finanzas_Jugadores', filasJugadores);
 }

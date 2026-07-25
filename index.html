@@ -27,6 +27,8 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- html2canvas para exportar imágenes -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- jsPDF para descargar Resoluciones en PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
@@ -227,6 +229,9 @@
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-estadisticas" onclick="mostrarSeccion('sec-estadisticas')" role="tab">
         <i class="bi bi-graph-up-arrow"></i><span>Estadísticas</span>
+      </button></li>
+      <li><button class="sidebar-item" data-seccion="sec-resoluciones" onclick="mostrarSeccion('sec-resoluciones')" role="tab">
+        <i class="bi bi-file-earmark-text-fill"></i><span>Resoluciones</span>
       </button></li>
       <li><button class="sidebar-item" data-seccion="sec-exportar" onclick="mostrarSeccion('sec-exportar')" role="tab">
         <i class="bi bi-upload"></i><span>Exportar</span>
@@ -491,6 +496,112 @@
       </div>
     </section>
 
+    <!-- ══ SECCIÓN: RESOLUCIONES ═════════════════════ -->
+    <section id="sec-resoluciones" class="seccion oculto" role="tabpanel">
+      <div class="seccion-header">
+        <h2><i class="bi bi-file-earmark-text-fill"></i> Resoluciones</h2>
+      </div>
+
+      <div class="res-tabs" role="tablist">
+        <button class="res-tab-btn activo" id="res-tabbtn-nueva" onclick="mostrarPestanaResoluciones('nueva')" role="tab"><i class="bi bi-file-earmark-plus-fill"></i> Nueva</button>
+        <button class="res-tab-btn" id="res-tabbtn-pendientes" onclick="mostrarPestanaResoluciones('pendientes')" role="tab"><i class="bi bi-exclamation-triangle-fill"></i> Pendientes</button>
+        <button class="res-tab-btn" id="res-tabbtn-historico" onclick="mostrarPestanaResoluciones('historico')" role="tab"><i class="bi bi-clock-history"></i> Histórico</button>
+        <button class="res-tab-btn" id="res-tabbtn-plantillas" onclick="mostrarPestanaResoluciones('plantillas')" role="tab"><i class="bi bi-collection-fill"></i> Plantillas</button>
+      </div>
+
+      <!-- ── Pestaña: Nueva resolución ── -->
+      <div id="res-tab-nueva" class="res-tab-panel">
+        <div class="res-constructor-grid">
+
+          <!-- Columna izquierda: formulario -->
+          <div class="res-form-col">
+
+            <div class="form-grupo" style="max-width:260px;margin-bottom:1rem">
+              <label for="res-fecha">Fecha de la resolución</label>
+              <input type="date" id="res-fecha" onchange="onCambioFechaResolucion()">
+            </div>
+
+            <h3 class="res-form-subtitulo"><i class="bi bi-card-list"></i> Artículo primero — Tabla de sanciones</h3>
+            <div id="res-tabla-sanciones-editor"></div>
+            <button class="btn-secundario btn-pequeño" style="margin:.6rem 0 1.5rem" onclick="agregarFilaSancion()"><i class="bi bi-plus-lg"></i> Agregar jugador sancionado</button>
+
+            <h3 class="res-form-subtitulo"><i class="bi bi-list-ol"></i> Artículos variables</h3>
+            <div id="res-articulos-variables-editor"></div>
+            <div class="form-fila" style="margin:.75rem 0">
+              <div class="form-grupo">
+                <label for="res-nueva-plantilla">Agregar artículo desde plantilla</label>
+                <select id="res-nueva-plantilla">
+                  <option value="">Seleccionar plantilla...</option>
+                </select>
+              </div>
+            </div>
+            <div class="res-botones-agregar-articulo">
+              <button class="btn-secundario btn-pequeño" onclick="agregarArticuloDesdePlantilla()"><i class="bi bi-file-earmark-plus"></i> Agregar desde plantilla</button>
+              <button class="btn-secundario btn-pequeño" onclick="agregarArticuloLibre()"><i class="bi bi-pencil-square"></i> Agregar texto libre</button>
+            </div>
+
+            <div class="res-botones-publicar">
+              <button class="btn-secundario" onclick="guardarBorradorResolucion()"><i class="bi bi-save2-fill"></i> Guardar borrador</button>
+              <button class="btn-principal" onclick="publicarResolucion()"><i class="bi bi-send-check-fill"></i> Publicar resolución</button>
+            </div>
+          </div>
+
+          <!-- Columna derecha: vista previa en vivo -->
+          <div class="res-preview-col">
+            <div class="res-preview-etiqueta">
+              <span><i class="bi bi-eye-fill"></i> Vista previa en vivo</span>
+              <button class="btn-secundario btn-xs" onclick="descargarBorradorPDF()" title="Descargar PDF"><i class="bi bi-download"></i> PDF</button>
+            </div>
+            <div id="res-vista-previa"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Pestaña: Pendientes de sancionar ── -->
+      <div id="res-tab-pendientes" class="res-tab-panel oculto">
+        <p class="info-texto">Jugadores con roja registrada en Estadísticas que todavía no están en ninguna resolución.</p>
+        <div id="res-pendientes-lista">
+          <p class="sin-datos">Sin jugadores pendientes de sancionar.</p>
+        </div>
+      </div>
+
+      <!-- ── Pestaña: Histórico ── -->
+      <div id="res-tab-historico" class="res-tab-panel oculto">
+        <div id="res-historico-lista">
+          <p class="sin-datos">Aún no hay resoluciones publicadas.</p>
+        </div>
+        <div id="res-historico-detalle"></div>
+      </div>
+
+      <!-- ── Pestaña: Plantillas ── -->
+      <div id="res-tab-plantillas" class="res-tab-panel oculto">
+        <p class="info-texto">Textos reutilizables para los artículos variables. Escribe <code>{placeholder}</code> donde quieras un dato que se llena al usar la plantilla.</p>
+
+        <div class="jugadores-card">
+          <h4 id="res-plantilla-form-titulo"><i class="bi bi-file-earmark-plus-fill"></i> Nueva plantilla</h4>
+          <div class="form-grupo" style="margin-bottom:.75rem">
+            <label for="res-plantilla-nombre">Nombre</label>
+            <input type="text" id="res-plantilla-nombre" placeholder="Ej: Rebaja de sanción por apelación" maxlength="80">
+          </div>
+          <div class="form-grupo" style="margin-bottom:.75rem">
+            <label for="res-plantilla-texto">Texto (usa <code>{placeholder}</code> para los datos variables)</label>
+            <textarea id="res-plantilla-texto" rows="4" placeholder="MEDIANTE APELACIÓN PRESENTADA... al señor {jugador} del equipo {equipo}..."></textarea>
+          </div>
+          <div class="res-botones-plantilla">
+            <button class="btn-principal btn-pequeño" onclick="guardarPlantilla()"><i class="bi bi-check-lg"></i> Guardar plantilla</button>
+            <button class="btn-secundario btn-pequeño oculto" id="res-btn-cancelar-plantilla" onclick="cancelarEdicionPlantilla()"><i class="bi bi-x-lg"></i> Cancelar edición</button>
+          </div>
+        </div>
+
+        <h3 class="res-form-subtitulo" style="margin-top:1.5rem">Plantillas guardadas</h3>
+        <div id="res-plantillas-lista">
+          <p class="sin-datos">Aún no hay plantillas guardadas.</p>
+        </div>
+      </div>
+
+    </section>
+
     <!-- ══ SECCIÓN: JORNADAS ════════════════════════ -->
     <section id="sec-jornadas" class="seccion oculto" role="tabpanel">
       <div class="seccion-header">
@@ -599,6 +710,7 @@
 <script src="js/estadisticas.js"></script>
 <script src="js/jornadas.js"></script>
 <script src="js/finanzas.js"></script>
+<script src="js/resoluciones.js"></script>
 <script src="js/exportar.js"></script>
 
 <script>
