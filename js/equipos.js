@@ -258,10 +258,14 @@ function _renderModalAbonos(equipo) {
   `;
 }
 
-/* ── Modal: Agregar jugador — reutiliza guardarNuevoJugadorEquipo (más abajo) ── */
+/* ── Modal: Agregar jugador — tabla con filas dinámicas, para cargar varios
+   jugadores de una sola vez (reutiliza agregarJugador de torneo.js, sin
+   tocar su validación). ── */
+
+let _nuevosJugadoresContador = 0; // solo sube; da un id único a cada fila mientras el modal está abierto
 
 function abrirModalAgregarJugador(equipo) {
-  _abrirModalEquipo('jugador', equipo, '<i class="bi bi-person-plus-fill"></i> Agregar jugador', _renderModalAgregarJugador);
+  _abrirModalEquipo('jugador', equipo, '<i class="bi bi-person-plus-fill"></i> Agregar jugadores', _renderModalAgregarJugador);
 }
 
 function _renderModalAgregarJugador(equipo) {
@@ -269,27 +273,39 @@ function _renderModalAgregarJugador(equipo) {
   if (!body) return;
   const equipoJs = equipo.replace(/'/g, "\\'");
   body.innerHTML = `
-    <div class="form-fila">
-      <div class="form-grupo">
-        <label for="nuevo-jugador-nombre">Nombre *</label>
-        <input type="text" id="nuevo-jugador-nombre" placeholder="Nombre completo" maxlength="50" autocapitalize="words">
-      </div>
-      <div class="form-grupo" style="max-width:100px">
-        <label for="nuevo-jugador-camisa"># Camisa</label>
-        <input type="number" id="nuevo-jugador-camisa" placeholder="Ej: 10" min="1" max="99">
-      </div>
-      <div class="form-grupo">
-        <label for="nuevo-jugador-cedula">Cédula</label>
-        <input type="text" id="nuevo-jugador-cedula" placeholder="Opcional" maxlength="20">
-      </div>
-      <div class="form-grupo">
-        <label for="nuevo-jugador-celular">Celular</label>
-        <input type="tel" id="nuevo-jugador-celular" placeholder="Opcional" maxlength="15">
-      </div>
+    <p class="info-texto" style="margin-bottom:.75rem">Cargá una o varias filas y guardá todo junto. Las filas sin nombre se ignoran.</p>
+    <div class="tabla-wrapper">
+      <table class="tabla-datos tabla-compacta">
+        <thead>
+          <tr><th>#</th><th style="text-align:left">Nombre *</th><th>Cédula</th><th>Celular</th><th></th></tr>
+        </thead>
+        <tbody id="nuevos-jugadores-tbody"></tbody>
+      </table>
     </div>
-    <button class="btn-principal btn-pequeño" onclick="guardarNuevoJugadorEquipo('${equipoJs}')"><i class="bi bi-person-plus-fill"></i> Agregar jugador</button>
+    <button class="btn-secundario btn-pequeño" style="margin:.6rem 0 1.25rem" onclick="agregarFilaNuevoJugador()"><i class="bi bi-plus-lg"></i> Agregar fila</button>
+    <button class="btn-principal" onclick="guardarNuevoJugadorEquipo('${equipoJs}')"><i class="bi bi-person-plus-fill"></i> Guardar jugadores</button>
   `;
-  document.getElementById('nuevo-jugador-nombre')?.focus();
+  _nuevosJugadoresContador = 0;
+  agregarFilaNuevoJugador();
+  agregarFilaNuevoJugador();
+  agregarFilaNuevoJugador();
+  document.getElementById(`njf-nombre-0`)?.focus();
+}
+
+function agregarFilaNuevoJugador() {
+  const tbody = document.getElementById('nuevos-jugadores-tbody');
+  if (!tbody) return;
+  const i = _nuevosJugadoresContador++;
+  const tr = document.createElement('tr');
+  tr.id = `njf-row-${i}`;
+  tr.innerHTML = `
+    <td><input type="number" id="njf-camisa-${i}" placeholder="#" min="1" max="99" class="input-edit input-edit-xs"></td>
+    <td><input type="text" id="njf-nombre-${i}" placeholder="Nombre completo" maxlength="50" autocapitalize="words" class="input-edit"></td>
+    <td><input type="text" id="njf-cedula-${i}" placeholder="Opcional" maxlength="20" class="input-edit"></td>
+    <td><input type="tel" id="njf-celular-${i}" placeholder="Opcional" maxlength="15" class="input-edit"></td>
+    <td class="col-acciones"><button class="btn-peligro btn-xs" onclick="document.getElementById('njf-row-${i}').remove()" title="Quitar fila"><i class="bi bi-trash3-fill"></i></button></td>
+  `;
+  tbody.appendChild(tr);
 }
 
 /* ── Modal: Goles y tarjetas — plantilla del equipo sin columnas de dinero ── */
@@ -389,15 +405,34 @@ function _renderModalPagosJugadores(equipo) {
    PLANTILLA — alta, edición y eliminación de jugadores
    ────────────────────────────────────────────── */
 
+/* Recorre todas las filas de la tabla del modal "Agregar jugadores" y guarda
+   las que tengan nombre (las vacías se ignoran, no hace falta borrarlas a mano). */
 function guardarNuevoJugadorEquipo(equipo) {
-  const nombre  = document.getElementById('nuevo-jugador-nombre')?.value;
-  const camisa  = document.getElementById('nuevo-jugador-camisa')?.value;
-  const cedula  = document.getElementById('nuevo-jugador-cedula')?.value;
-  const celular = document.getElementById('nuevo-jugador-celular')?.value;
-  if (agregarJugador(equipo, nombre, cedula, celular, camisa)) {
-    renderizarEquipos();
-    mostrarExito(`Jugador registrado en ${equipo}`);
+  const tbody = document.getElementById('nuevos-jugadores-tbody');
+  if (!tbody) return;
+
+  let agregados = 0;
+  let conError = 0;
+  Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+    const idx = tr.id.replace('njf-row-', '');
+    const nombre = document.getElementById(`njf-nombre-${idx}`)?.value;
+    if (!nombre || !nombre.trim()) return; // fila vacía: se ignora
+
+    const camisa  = document.getElementById(`njf-camisa-${idx}`)?.value;
+    const cedula  = document.getElementById(`njf-cedula-${idx}`)?.value;
+    const celular = document.getElementById(`njf-celular-${idx}`)?.value;
+    if (agregarJugador(equipo, nombre, cedula, celular, camisa)) agregados++;
+    else conError++;
+  });
+
+  if (agregados === 0) {
+    if (conError === 0) mostrarError('Completá el nombre de al menos un jugador para guardar.');
+    return;
   }
+
+  renderizarEquipos();
+  const detalleError = conError ? ` (${conError} fila${conError === 1 ? '' : 's'} con error, revisá nombres duplicados)` : '';
+  mostrarExito(`${agregados} jugador${agregados === 1 ? '' : 'es'} registrado${agregados === 1 ? '' : 's'} en ${equipo}${detalleError}`);
 }
 
 /* Pone una fila en modo edición inline (solo datos personales; los goles/tarjetas
