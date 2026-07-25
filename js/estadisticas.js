@@ -18,7 +18,7 @@ function poblarSelectorJornadas() {
   if (!sel) return;
 
   const jornadas = [...new Set(
-    fixtureActual.filter(p => p.estado !== 'descansa').map(p => p.jornada)
+    fixtureActual.filter(p => !_esDescansa(p)).map(p => p.jornada)
   )].sort((a, b) => a - b);
 
   sel.innerHTML = '<option value="">Seleccionar jornada...</option>' +
@@ -43,7 +43,7 @@ function onCambioJornada() {
     return;
   }
 
-  const partidos = fixtureActual.filter(p => p.jornada === jornada && p.estado !== 'descansa');
+  const partidos = fixtureActual.filter(p => p.jornada === jornada && !_esDescansa(p));
   selPartido.innerHTML = '<option value="">Seleccionar partido...</option>' +
     partidos.map(p => `<option value="${p.id}">${p.local} vs ${p.visitante}</option>`).join('');
 

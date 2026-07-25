@@ -49,13 +49,13 @@ function renderizarResultados(jornada) {
   }
 
   contenedor.innerHTML = partidos.map(p => {
-    if (p.estado === 'descansa') {
+    if (_esDescansa(p)) {
       return `
         <div class="partido-card partido-descansa">
           <div class="partido-contenido" style="justify-content:center;gap:1rem;">
             <span style="font-size:1.5rem">😴</span>
             <div>
-              <div class="equipo-nombre">${p.local}</div>
+              <div class="equipo-nombre">${_equipoDescansa(p)}</div>
               <div class="partido-estado-badge" style="text-align:left;margin-top:.2rem;">Descansa esta jornada</div>
             </div>
           </div>
@@ -101,7 +101,7 @@ function renderizarResultados(jornada) {
   // Botón guardar: visible siempre que haya partidos reales (no solo descansos)
   const btnContainer = document.getElementById('btn-guardar-resultados-container');
   if (btnContainer) {
-    btnContainer.classList.toggle('oculto', partidos.every(p => p.estado === 'descansa'));
+    btnContainer.classList.toggle('oculto', partidos.every(p => _esDescansa(p)));
   }
 }
 
@@ -110,7 +110,7 @@ function renderizarResultados(jornada) {
    ────────────────────────────────────────────── */
 
 async function guardarResultados() {
-  const partidos = fixtureActual.filter(p => p.jornada === jornadaViendo && p.estado !== 'descansa');
+  const partidos = fixtureActual.filter(p => p.jornada === jornadaViendo && !_esDescansa(p));
   let cambios = 0;
   const ahora = new Date().toISOString();
 

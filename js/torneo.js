@@ -19,10 +19,23 @@ let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula,
 let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
 
+/* Detecta si un partido es en realidad un "descansa", incluso si quedó mal guardado
+   (fixtures viejos de modalidad ida-vuelta podían guardar el descanso de la vuelta
+   con estado "pendiente" y local/visitante invertidos). */
+function _esDescansa(p) {
+  return p.estado === 'descansa' || p.local === 'DESCANSA' || p.visitante === 'DESCANSA';
+}
+
+/* Devuelve el nombre del equipo que descansa en un partido de descanso,
+   sin importar si quedó guardado en el campo local o visitante. */
+function _equipoDescansa(p) {
+  return p.local === 'DESCANSA' ? p.visitante : p.local;
+}
+
 /* Devuelve una copia de los partidos de una jornada con el/los "descansa" siempre al final
    (orden estable: no altera el orden relativo de los partidos jugables entre sí). */
 function _ordenarDescansaAlFinal(partidos) {
-  return [...partidos].sort((a, b) => (a.estado === 'descansa' ? 1 : 0) - (b.estado === 'descansa' ? 1 : 0));
+  return [...partidos].sort((a, b) => (_esDescansa(a) ? 1 : 0) - (_esDescansa(b) ? 1 : 0));
 }
 
 /* ──────────────────────────────────────────────
@@ -332,16 +345,24 @@ function generarFixtureIdaVuelta(equipos) {
   const ida      = generarFixtureRoundRobin(equipos);
   const maxJorn  = Math.max(...ida.map(p => p.jornada));
 
-  const vuelta = ida.map(p => ({
-    ...p,
-    jornada:        p.jornada + maxJorn,
-    id:             `V${p.jornada}_${p.id.split('_').pop()}`,
-    local:          p.visitante,
-    visitante:      p.local,
-    golesLocal:     '',
-    golesVisitante: '',
-    estado:         'pendiente'
-  }));
+  const vuelta = ida.map(p => {
+    const jornada = p.jornada + maxJorn;
+    const id      = `V${p.jornada}_${p.id.split('_').pop()}`;
+    if (p.estado === 'descansa') {
+      // El equipo que descansa en la ida vuelve a descansar en la vuelta:
+      // no se invierte local/visitante ni se cambia el estado.
+      return { ...p, jornada, id };
+    }
+    return {
+      ...p,
+      jornada, id,
+      local:          p.visitante,
+      visitante:      p.local,
+      golesLocal:     '',
+      golesVisitante: '',
+      estado:         'pendiente'
+    };
+  });
 
   return [...ida, ...vuelta];
 }
@@ -487,7 +508,7 @@ function calcularJornadaActual() {
   if (!fixtureActual.length) return 1;
   const jornadas = [...new Set(fixtureActual.map(p => p.jornada))].sort((a, b) => a - b);
   for (const j of jornadas) {
-    if (fixtureActual.filter(p => p.jornada === j).some(p => p.estado === 'pendiente')) return j;
+    if (fixtureActual.filter(p => p.jornada === j).some(p => !_esDescansa(p) && p.estado === 'pendiente')) return j;
   }
   return jornadas[jornadas.length - 1];
 }
@@ -532,7 +553,7 @@ function renderizarInicio() {
   if (proxEl) {
     const jornadaActiva = calcularJornadaActual();
     const partidosJornada = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === jornadaActiva));
-    const hayPendientes = partidosJornada.some(p => p.estado === 'pendiente');
+    const hayPendientes = partidosJornada.some(p => !_esDescansa(p) && p.estado === 'pendiente');
 
     if (!hayPendientes || partidosJornada.length === 0) {
       proxEl.innerHTML = '<p class="sin-datos">¡Torneo finalizado! 🏆</p>';
@@ -541,11 +562,11 @@ function renderizarInicio() {
         const horario = horariosActual.find(h => h.partidoId === p.id);
         const fecha = horario?.fecha ? new Date(horario.fecha + 'T00:00:00').toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
         const hora  = horario?.hora || '';
-        if (p.estado === 'descansa') {
+        if (_esDescansa(p)) {
           return `
             <div class="proximo-partido proximo-descansa">
               <div class="proximo-jornada">J${p.jornada}</div>
-              <div class="proximo-equipos"><i class="bi bi-moon-stars-fill" style="font-size:.9rem"></i> <span>${p.local}</span> descansa</div>
+              <div class="proximo-equipos"><i class="bi bi-moon-stars-fill" style="font-size:.9rem"></i> <span>${_equipoDescansa(p)}</span> descansa</div>
             </div>
           `;
         }
@@ -851,10 +872,10 @@ function renderizarFixture() {
   cont.innerHTML = jornadas.map(j => {
     const partidos = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === j));
     const filas = partidos.map(p => {
-      if (p.estado === 'descansa') {
+      if (_esDescansa(p)) {
         return `<div class="fixture-fila fixture-descansa">
           <div class="fixture-meta">–</div>
-          <div class="fixture-vs"><i class="bi bi-moon-stars-fill"></i> ${p.local} <span class="fixture-descansa-label">descansa</span></div>
+          <div class="fixture-vs"><i class="bi bi-moon-stars-fill"></i> ${_equipoDescansa(p)} <span class="fixture-descansa-label">descansa</span></div>
           <div class="fixture-resultado">–</div>
         </div>`;
       }
