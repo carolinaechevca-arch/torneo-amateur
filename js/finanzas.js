@@ -84,10 +84,33 @@ function _obtenerEntradaFinanzasJugador(jugadorId, crear) {
   return entrada;
 }
 
+/* Monto de tarjetas de un jugador, partido por partido: si en un mismo
+   partido llegó a 2 amarillas (expulsión por doble amarilla) se cobra solo
+   el precio de la roja, sin sumar además el precio de esas 2 amarillas —
+   la expulsión ya "absorbe" la sanción. Una roja directa (sin 2 amarillas
+   en esa misma entrada) sí se cobra aparte de cualquier amarilla suelta de
+   otro partido. Necesita las entradas por separado (no el total agregado)
+   para saber cuáles amarillas coincidieron con cuál roja. */
+function _montoTarjetasDeJugador(jugador) {
+  const precioAmarilla = Number(torneoActual?.precioAmarilla) || 0;
+  const precioRoja     = Number(torneoActual?.precioRoja) || 0;
+  const entradas = statsActual.filter(s => s.equipo === jugador.equipo && s.jugador === jugador.nombre);
+
+  let totalAmarillas = 0, totalRojas = 0, monto = 0;
+  entradas.forEach(s => {
+    const am = Number(s.amarillas) || 0;
+    const ro = Number(s.rojas) || 0;
+    totalAmarillas += am;
+    totalRojas += ro;
+    monto += am >= 2 ? precioRoja : (am * precioAmarilla + ro * precioRoja);
+  });
+
+  return { monto, totalAmarillas, totalRojas };
+}
+
 function _cargoTarjetasDeJugador(jugador) {
   if (!torneoActual) return null;
-  const st = _statsJugador(jugador.equipo, jugador.nombre);
-  const monto = st.amarillas * (Number(torneoActual.precioAmarilla) || 0) + st.rojas * (Number(torneoActual.precioRoja) || 0);
+  const { monto, totalAmarillas, totalRojas } = _montoTarjetasDeJugador(jugador);
   if (monto <= 0) return null;
 
   const entrada = finanzasJugadoresActual.find(f => f.jugadorId === jugador.id);
@@ -101,7 +124,7 @@ function _cargoTarjetasDeJugador(jugador) {
     jugador:      jugador.nombre,
     equipo:       jugador.equipo,
     numeroCamisa: jugador.numeroCamisa,
-    concepto:     _textoCargos(st.amarillas, st.rojas),
+    concepto:     _textoCargos(totalAmarillas, totalRojas),
     monto,
     pagado: montoCubierto >= monto
   };
@@ -225,8 +248,7 @@ async function toggleCargoJugador(jugadorId, cargoId) {
   mostrarCarga('Actualizando pago...');
   try {
     if (cargoId.startsWith('T_')) {
-      const st = _statsJugador(jugador.equipo, jugador.nombre);
-      const monto = st.amarillas * (Number(torneoActual.precioAmarilla) || 0) + st.rojas * (Number(torneoActual.precioRoja) || 0);
+      const { monto } = _montoTarjetasDeJugador(jugador);
 
       const entrada = _obtenerEntradaFinanzasJugador(jugadorId, true);
       let cargo = entrada.cargos.find(c => c.origen === 'tarjetas');
