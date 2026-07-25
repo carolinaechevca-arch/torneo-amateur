@@ -1098,6 +1098,12 @@ label   { font-weight: 600; }
   justify-content: center;
 }
 .btn-peligro:hover { opacity: .8; }
+.btn-peligro:disabled {
+  background: var(--c-text-muted);
+  opacity: .5;
+  cursor: not-allowed;
+}
+.btn-peligro:disabled:hover { opacity: .5; }
 .btn-xs { padding: 2px 8px; font-size: .75rem; }
 
 /* Formulario inline dentro del formulario de estadísticas */
@@ -1511,6 +1517,13 @@ h2 .bi, h3 .bi, summary .bi { vertical-align: middle; margin-right: .25em; }
 .input-edit-xs::-webkit-outer-spin-button,
 .input-edit-xs::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .input-edit-xs[type="number"] { -moz-appearance: textfield; }
+.input-edit:disabled {
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  color: var(--c-text-muted);
+  cursor: not-allowed;
+  opacity: .7;
+}
 
 /* Fila del selector de equipo (select + botón de renombrar) */
 .selector-equipo-fila {
