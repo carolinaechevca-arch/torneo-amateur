@@ -16,6 +16,11 @@ function _hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function _badgeEstado(estado) {
+  const clase = estado === 'Pagado' ? 'fin-badge-pagado' : (estado === 'Parcial' ? 'fin-badge-parcial' : 'fin-badge-pendiente');
+  return `<span class="fin-badge ${clase}">${estado}</span>`;
+}
+
 function _textoCargos(amarillas, rojas) {
   const partes = [];
   if (amarillas > 0) partes.push(`${amarillas} amarilla${amarillas > 1 ? 's' : ''}`);
@@ -102,15 +107,15 @@ function renderizarFinanzas() {
   }
 
   const filas = eqs.map(e => {
-    const claseEstado = e.estado === 'Pendiente' ? 'dg-negativo' : (e.estado === 'Pagado' ? 'dg-positivo' : '');
+    const claseSaldo = e.saldo > 0 ? 'dg-negativo' : 'dg-positivo';
     const equipoJs = e.equipo.replace(/'/g, "\\'");
     return `
       <tr>
         <td class="col-equipo">${e.equipo}</td>
         <td>${_formatoMoneda(e.inscripcion)}</td>
         <td>${_formatoMoneda(e.abonado)}</td>
-        <td class="${claseEstado}">${_formatoMoneda(e.saldo)}</td>
-        <td>${e.estado}</td>
+        <td class="${claseSaldo}">${_formatoMoneda(e.saldo)}</td>
+        <td>${_badgeEstado(e.estado)}</td>
         <td class="col-acciones">
           <button class="btn-secundario btn-xs" onclick="seleccionarEquipoFinanzas('${equipoJs}')" title="Ver detalle">
             <i class="bi bi-eye-fill"></i>
@@ -180,9 +185,10 @@ function renderizarDetalleEquipoFinanzas(equipo) {
       <td><strong>${j.jugador}</strong></td>
       <td>${j.cargosTexto}</td>
       <td class="col-num">${_formatoMoneda(j.monto)}</td>
+      <td>${_badgeEstado(j.pagado ? 'Pagado' : 'Pendiente')}</td>
       <td class="col-acciones">
-        <button class="btn-${j.pagado ? 'secundario' : 'principal'} btn-xs" onclick="toggleJugadorPagado('${j.jugadorId}')">
-          ${j.pagado ? '<i class="bi bi-check-circle-fill"></i> Pagado' : 'Marcar pagado'}
+        <button class="btn-secundario btn-xs" onclick="toggleJugadorPagado('${j.jugadorId}')" title="${j.pagado ? 'Marcar como no pagado' : 'Marcar como pagado'}">
+          <i class="bi bi-arrow-repeat"></i>
         </button>
       </td>
     </tr>
@@ -222,7 +228,7 @@ function renderizarDetalleEquipoFinanzas(equipo) {
     ${jugadoresEquipo.length === 0 ? '<p class="sin-datos">Sin tarjetas registradas para este equipo.</p>' : `
       <div class="tabla-wrapper">
         <table class="tabla-datos tabla-compacta">
-          <thead><tr><th>#</th><th>Jugador</th><th>Cargos</th><th>Monto</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Jugador</th><th>Cargos</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
           <tbody>${filasJugadores}</tbody>
         </table>
       </div>
@@ -238,6 +244,12 @@ async function guardarAbono(equipo) {
   const monto = parseFloat(document.getElementById('fin-abono-monto')?.value || 0);
   const fecha = document.getElementById('fin-abono-fecha')?.value || _hoyISO();
   if (!monto || monto <= 0) { mostrarError('Ingresa un monto válido para el abono.'); return; }
+
+  const eq = calcularFinanzasEquipos().find(e => e.equipo === equipo);
+  if (eq && monto > eq.saldo) {
+    mostrarError(`El saldo pendiente de ${equipo} es ${_formatoMoneda(eq.saldo)}. No puedes abonar más que eso.`);
+    return;
+  }
 
   let fin = finanzasEquiposActual.find(f => f.equipo === equipo);
   if (!fin) { fin = { equipo, abonos: [] }; finanzasEquiposActual.push(fin); }

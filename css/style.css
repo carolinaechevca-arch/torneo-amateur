@@ -1019,6 +1019,19 @@ label   { font-weight: 600; }
 .dg-positivo { color: var(--c-success); font-weight: 700; }
 .dg-negativo { color: var(--c-danger);  font-weight: 700; }
 
+/* Insignias de estado (Finanzas: Pagado / Parcial / Pendiente) */
+.fin-badge {
+  display: inline-block;
+  padding: .2rem .65rem;
+  border-radius: var(--radio-pill);
+  font-size: .78rem;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+}
+.fin-badge-pagado    { color: var(--c-success); border-color: var(--c-success); background: rgba(40,128,36,.1); }
+.fin-badge-parcial   { color: var(--c-warning); border-color: var(--c-warning); background: rgba(212,130,10,.1); }
+.fin-badge-pendiente { color: var(--c-danger);  border-color: var(--c-danger);  background: rgba(192,57,43,.1); }
+
 /* Colores primeros puestos */
 .primer-lugar  td { background: rgba(40,128,36,.12)  !important; }
 .segundo-lugar td { background: rgba(40,128,36,.07)  !important; }
