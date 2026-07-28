@@ -11,6 +11,7 @@ const SCOPES = [
 let tokenClient = null;
 let _accessToken = null;
 let _usuarioActual = null;
+let _refrescoTokenTimeoutId = null;
 
 /* Inicializa el cliente de token de Google Identity Services */
 function inicializarAuth() {
@@ -31,6 +32,7 @@ function inicializarAuth() {
 
   if (tokenGuardado && Date.now() < expira) {
     _accessToken = tokenGuardado;
+    _programarRefrescoToken(expira);
     _verificarYMostrarApp();
   }
 }
@@ -47,9 +49,30 @@ async function _manejarTokenRespuesta(resp) {
   const expira = Date.now() + resp.expires_in * 1000 - 60_000;
   sessionStorage.setItem('ga_token', _accessToken);
   sessionStorage.setItem('ga_exp', String(expira));
+  _programarRefrescoToken(expira);
 
   await _cargarPerfilUsuario();
   _verificarYMostrarApp();
+}
+
+/* Programa un refresco silencioso (sin popup) un poco antes de que venza el
+   token, para que la sesión de Google Sheets/Drive nunca se corte mientras
+   la pestaña siga abierta. Cada refresco vuelve a llamar a este mismo
+   callback (_manejarTokenRespuesta), que reprograma el siguiente. */
+function _programarRefrescoToken(expiraEnMs) {
+  if (_refrescoTokenTimeoutId) clearTimeout(_refrescoTokenTimeoutId);
+  const demora = Math.max(0, expiraEnMs - Date.now());
+  _refrescoTokenTimeoutId = setTimeout(_refrescarTokenSilenciosamente, demora);
+}
+
+/* Pide un token nuevo sin mostrar el popup de consentimiento (prompt: ''):
+   funciona sola si el usuario sigue con sesión de Google iniciada en el
+   navegador y ya había autorizado esta app antes. Si falla (sesión de Google
+   cerrada, consentimiento revocado, etc.), el error lo maneja
+   _manejarTokenRespuesta como con cualquier otro pedido de token. */
+function _refrescarTokenSilenciosamente() {
+  if (!tokenClient) return;
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
 /* Obtiene el nombre del usuario autenticado */
@@ -91,6 +114,7 @@ function iniciarSesion() {
 
 /* Cierra sesión y limpia todos los datos de sesión */
 function cerrarSesion() {
+  if (_refrescoTokenTimeoutId) clearTimeout(_refrescoTokenTimeoutId);
   if (_accessToken) {
     google.accounts.oauth2.revoke(_accessToken, () => {});
   }
