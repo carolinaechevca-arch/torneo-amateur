@@ -630,8 +630,19 @@ async function guardarEdicionStatEntry(statId) {
 
   const goles = Math.max(0, parseInt(document.getElementById(`es-g-${statId}`)?.value || 0));
   const pagado = _cargoTarjetasEstaPagado(statId);
-  const amarillas = pagado ? s.amarillas : Math.max(0, parseInt(document.getElementById(`es-a-${statId}`)?.value || 0));
-  const rojas     = pagado ? s.rojas     : Math.max(0, parseInt(document.getElementById(`es-r-${statId}`)?.value || 0));
+  let amarillas = pagado ? s.amarillas : Math.max(0, parseInt(document.getElementById(`es-a-${statId}`)?.value || 0));
+  let rojas     = pagado ? s.rojas     : Math.max(0, parseInt(document.getElementById(`es-r-${statId}`)?.value || 0));
+
+  // Máximo 2 amarillas por partido; 2 amarillas = 1 roja automática — pero
+  // solo si la roja no se puso a mano (mismo criterio que "Registrar
+  // Estadística de Partido", que hasta ahora era el único lugar con esta regla).
+  if (!pagado) {
+    if (amarillas > 2) amarillas = 2;
+    if (amarillas === 2 && rojas === 0) {
+      rojas = 1;
+      mostrarExito('⚠️ 2 amarillas = 1 roja asignada automáticamente');
+    }
+  }
 
   const partido = fixtureActual.find(p => p.id === s.partidoId);
   if (partido && goles > 0) {
