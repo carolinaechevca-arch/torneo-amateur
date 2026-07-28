@@ -77,6 +77,55 @@ function _migrarFinanzasJugadoresActual() {
   if (cambiado) guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
 }
 
+/* Reparación de un bug ya corregido en agregarJugador (torneo.js): el id se
+   generaba solo con Date.now(), así que agregar varios jugadores en la misma
+   tanda (ej. la tabla de "Agregar jugadores", que guarda todas las filas en
+   un mismo bucle síncrono) les daba a todos el MISMO id — y como los cargos
+   de tarjetas y la eliminación de jugador se buscan por ese id, quedaban
+   compartidos entre jugadores distintos en vez de ser individuales.
+   Al primero de cada grupo con id repetido lo deja como está; a los demás
+   les asigna un id nuevo (ya único) y les reatribuye SUS cargos de tarjetas
+   —vía statId, que identifica sin ambigüedad a qué partido y jugador
+   pertenece cada cargo— desde la entrada compartida a la suya propia. Los
+   cargos de Resolución no tienen forma de desambiguarse así, así que quedan
+   con el primero del grupo (caso raro: requiere resolución YA publicada
+   antes de este bug). */
+function _repararJugadoresIdDuplicado() {
+  const porId = {};
+  jugadoresActual.forEach(j => { (porId[j.id] = porId[j.id] || []).push(j); });
+
+  let huboConflicto = false;
+  Object.values(porId).forEach(grupo => {
+    if (grupo.length <= 1) return;
+    huboConflicto = true;
+
+    grupo.slice(1).forEach(jugadorDuplicado => {
+      const idViejo = jugadorDuplicado.id;
+      jugadorDuplicado.id = `J_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      const entradaVieja = finanzasJugadoresActual.find(f => f.jugadorId === idViejo);
+      if (!entradaVieja) return;
+
+      const cargosDelDuplicado = entradaVieja.cargos.filter(c => {
+        if (c.origen !== 'tarjetas' || !c.statId) return false;
+        const s = statsActual.find(x => x.id === c.statId);
+        return s && s.equipo === jugadorDuplicado.equipo && s.jugador === jugadorDuplicado.nombre;
+      });
+      if (cargosDelDuplicado.length === 0) return;
+
+      entradaVieja.cargos = entradaVieja.cargos.filter(c => !cargosDelDuplicado.includes(c));
+      const entradaNueva = _obtenerEntradaFinanzasJugador(jugadorDuplicado.id, true);
+      entradaNueva.cargos.push(...cargosDelDuplicado);
+    });
+  });
+
+  if (huboConflicto) {
+    guardarJugadoresLocal(jugadoresActual);
+    guardarFinanzasJugadoresLocal(finanzasJugadoresActual);
+    mostrarError('Se repararon jugadores que habían quedado con datos mezclados por un bug ya corregido (agregar varios jugadores juntos). Revisá los cobros de esos jugadores para confirmar que quedaron bien.');
+  }
+}
+
 /* Migración/sincronización de arranque: se corre en cada carga de la app y
    es idempotente (no toca lo que ya está sincronizado). Dos trabajos:
    1) Migra el cobro de tarjetas viejo (un solo total agregado por jugador,

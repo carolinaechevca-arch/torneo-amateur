@@ -133,6 +133,7 @@ function cargarDatosApp() {
   plantillasActual        = cargarPlantillasResolucionLocal();
   _resolucionesContador   = cargarResolucionesContadorLocal();
   _asegurarIdsStats();
+  _repararJugadoresIdDuplicado();
   _migrarFinanzasJugadoresActual();
   _migrarCargosTarjetasPorPartido();
 
@@ -783,7 +784,7 @@ function agregarJugador(equipo, nombre, cedula, celular, numeroCamisa) {
     return false;
   }
   jugadoresActual.push({
-    id: `J_${Date.now()}`,
+    id: `J_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     equipo,
     nombre,
     numeroCamisa: numeroCamisa?.toString().trim() || '',
