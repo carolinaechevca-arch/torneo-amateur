@@ -652,6 +652,25 @@ label   { font-weight: 600; }
 .sidebar-toggle-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
 .app-sidebar.colapsado .sidebar-toggle-btn { transform: rotate(180deg); }
 
+.sidebar-config-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.5);
+  cursor: pointer;
+  font-size: .95rem;
+  padding: .2rem;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.sidebar-config-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
+.app-sidebar.colapsado .sidebar-config-btn { display: none; }
+
 /* Nav list */
 .sidebar-nav {
   list-style: none;

@@ -292,6 +292,73 @@ async function crearTorneo() {
   }
 }
 
+/* ──────────────────────────────────────────────
+   CONFIGURACIÓN DEL TORNEO (precios) — editable después de creado
+   ────────────────────────────────────────────── */
+
+function abrirModalConfiguracionTorneo() {
+  if (!torneoActual) return;
+  cerrarModalConfiguracionTorneo(); // por si quedó otro abierto
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'config-torneo-overlay';
+  overlay.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Configuración del torneo">
+      <div class="modal-header">
+        <h2><i class="bi bi-gear-fill"></i> Configuración del torneo</h2>
+        <button class="modal-cerrar" onclick="cerrarModalConfiguracionTorneo()" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="config-precio-inscripcion">💵 Precio Inscripción</label>
+            <input type="number" id="config-precio-inscripcion" min="0" step="0.01" inputmode="decimal" value="${Number(torneoActual.precioInscripcion) || 0}">
+          </div>
+          <div class="form-grupo">
+            <label for="config-precio-amarilla"><i class="bi bi-square-fill" style="color:#D4820A"></i> Precio Amarilla</label>
+            <input type="number" id="config-precio-amarilla" min="0" step="0.01" inputmode="decimal" value="${Number(torneoActual.precioAmarilla) || 0}">
+          </div>
+          <div class="form-grupo">
+            <label for="config-precio-roja"><i class="bi bi-square-fill" style="color:#C0392B"></i> Precio Roja</label>
+            <input type="number" id="config-precio-roja" min="0" step="0.01" inputmode="decimal" value="${Number(torneoActual.precioRoja) || 0}">
+          </div>
+        </div>
+        <p class="info-texto" style="margin-top:.5rem">
+          Cambiar estos precios no recalcula los cobros que ya existen; solo aplica a las tarjetas que se registren o editen de ahora en más.
+        </p>
+        <button class="btn-principal" style="margin-top:1rem" onclick="guardarConfiguracionTorneo()"><i class="bi bi-check-lg"></i> Guardar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) cerrarModalConfiguracionTorneo(); });
+  document.addEventListener('keydown', _escapeCierraModalConfigTorneo);
+  document.getElementById('config-precio-inscripcion')?.focus();
+}
+
+function _escapeCierraModalConfigTorneo(e) {
+  if (e.key === 'Escape') cerrarModalConfiguracionTorneo();
+}
+
+function cerrarModalConfiguracionTorneo() {
+  document.removeEventListener('keydown', _escapeCierraModalConfigTorneo);
+  document.getElementById('config-torneo-overlay')?.remove();
+}
+
+function guardarConfiguracionTorneo() {
+  if (!torneoActual) return;
+  torneoActual.precioInscripcion = parseFloat(document.getElementById('config-precio-inscripcion')?.value || 0);
+  torneoActual.precioAmarilla    = parseFloat(document.getElementById('config-precio-amarilla')?.value || 0);
+  torneoActual.precioRoja        = parseFloat(document.getElementById('config-precio-roja')?.value || 0);
+  guardarTorneoLocal(torneoActual);
+
+  cerrarModalConfiguracionTorneo();
+  renderizarEquipos();
+  mostrarExito('✅ Configuración del torneo actualizada');
+}
+
 /* Escribe los datos iniciales en todas las hojas del spreadsheet */
 async function _inicializarHojasSheets(sheetId, nombre, equipos, fixture, finanzasEquipos) {
   // Hoja Equipos
