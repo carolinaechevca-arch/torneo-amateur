@@ -23,6 +23,7 @@ let horariosActual  = [];    // array de horarios de partidos
 let jugadoresActual = [];    // array de jugadores { id, equipo, nombre, cedula, celular }
 let historialActual = [];    // array de cambios en resultados
 let jornadaViendo   = 1;     // jornada actualmente visible en Resultados
+let jornadaViendoInicio = 1; // jornada actualmente visible en la tarjeta "Próximos Partidos" de Inicio
 let finanzasEquiposActual   = []; // [{ equipo, abonos: [{id, monto, fecha}] }]
 let finanzasJugadoresActual = []; // [{ jugadorId, cargos: [{id, origen, monto, pagado, ...}] }] — tarjetas: uno por partido (statId, fecha); resolución: uno por sanción publicada
 let resolucionesActual  = []; // [{ id, numero, estado, fecha, tablaSanciones:[], articulosVariables:[] }]
@@ -146,6 +147,7 @@ function cargarDatosApp() {
   if (tb) tb.textContent = torneoActual.nombre;
 
   // Renderizar cada sección
+  jornadaViendoInicio = calcularJornadaActual();
   renderizarInicio();
   renderizarPosiciones();
   renderizarEstadisticas();
@@ -674,14 +676,20 @@ function renderizarInicio() {
     }
   }
 
-  // Próximos partidos — jornada activa completa
+  // Próximos partidos — jornada elegida con las flechas (por defecto, la activa)
   const proxEl = document.getElementById('inicio-proximos');
   if (proxEl) {
-    const jornadaActiva = calcularJornadaActual();
+    const jornadaActiva = jornadaViendoInicio || calcularJornadaActual();
+    const maxJornadaInicio = fixtureActual.length ? Math.max(...fixtureActual.map(p => p.jornada)) : 1;
+    _setText('inicio-jornada-label', `Jornada ${jornadaActiva}`);
+
     const partidosJornada = _ordenarDescansaAlFinal(fixtureActual.filter(p => p.jornada === jornadaActiva));
     const hayPendientes = partidosJornada.some(p => !_esDescansa(p) && p.estado === 'pendiente');
+    // "Torneo finalizado" solo tiene sentido si se está viendo la última jornada y ya no queda nada pendiente;
+    // si el usuario navegó a una jornada anterior ya jugada, se le muestra su lista de partidos normal.
+    const torneoFinalizado = jornadaActiva === maxJornadaInicio && !hayPendientes;
 
-    if (!hayPendientes || partidosJornada.length === 0) {
+    if (torneoFinalizado || partidosJornada.length === 0) {
       proxEl.innerHTML = '<p class="sin-datos">¡Torneo finalizado! 🏆</p>';
     } else {
       proxEl.innerHTML = partidosJornada.map(p => {
@@ -705,6 +713,24 @@ function renderizarInicio() {
         `;
       }).join('');
     }
+  }
+}
+
+/* Flechas de "Próximos Partidos" en Inicio — misma idea que jornadaAnterior/
+   jornadaSiguiente de Resultados, pero con su propio estado (jornadaViendoInicio)
+   para no interferir con la jornada que se esté viendo en Resultados. */
+function jornadaAnteriorInicio() {
+  if (jornadaViendoInicio > 1) {
+    jornadaViendoInicio--;
+    renderizarInicio();
+  }
+}
+
+function jornadaSiguienteInicio() {
+  const maxJornada = fixtureActual.length ? Math.max(...fixtureActual.map(p => p.jornada)) : 1;
+  if (jornadaViendoInicio < maxJornada) {
+    jornadaViendoInicio++;
+    renderizarInicio();
   }
 }
 
