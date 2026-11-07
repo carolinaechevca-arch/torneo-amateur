@@ -165,9 +165,12 @@ function iniciarSesion() {
   if (!tokenClient) {
     inicializarAuth();
     // Esperar a que GSI esté listo antes de pedir token
-    setTimeout(() => tokenClient && tokenClient.requestAccessToken({ prompt: 'consent' }), 800);
+    setTimeout(() => tokenClient && tokenClient.requestAccessToken({ prompt: 'select_account' }), 800);
   } else {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    // No forzar "consent" en cada ingreso: si la cuenta ya autorizó la app,
+    // Google puede entregar el token directamente después de seleccionarla.
+    // Cuando todavía faltan permisos, Google muestra el consentimiento igualmente.
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
   }
 }
 
