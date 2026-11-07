@@ -241,6 +241,37 @@ function _numeroHoja(valor) {
   return Number.isFinite(n) ? n : valor;
 }
 
+function _claveEquipoHoja(valor) {
+  return String(valor || '')
+    .trim()
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function _montoHoja(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+  let texto = String(valor || '').trim().replace(/[^\d,.-]/g, '');
+  if (!texto) return 0;
+
+  const ultimoPunto = texto.lastIndexOf('.');
+  const ultimaComa = texto.lastIndexOf(',');
+  if (ultimoPunto !== -1 && ultimaComa !== -1) {
+    const decimal = ultimoPunto > ultimaComa ? '.' : ',';
+    const miles = decimal === '.' ? ',' : '.';
+    texto = texto.split(miles).join('').replace(decimal, '.');
+  } else if (ultimaComa !== -1 || ultimoPunto !== -1) {
+    const separador = ultimaComa !== -1 ? ',' : '.';
+    const partes = texto.split(separador);
+    const final = partes[partes.length - 1];
+    texto = final.length === 3
+      ? partes.join('')
+      : partes.slice(0, -1).join('') + '.' + final;
+  }
+  const n = Number(texto);
+  return Number.isFinite(n) ? n : 0;
+}
+
 async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
   cerrarSelectorTorneosDrive();
   mostrarCarga('Recuperando la información del torneo...');
@@ -293,8 +324,9 @@ async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
 
     const finanzasEquipos = equipos.map(equipo => ({ equipo, abonos: [] }));
     finEquiposFilas.slice(1).forEach((f, i) => {
-      const entrada = finanzasEquipos.find(x => x.equipo === String(f[0] || ''));
-      if (entrada) entrada.abonos.push({ id: `A_REC_${i}`, monto: Number(f[1]) || 0, fecha: String(f[2] || '') });
+      const clave = _claveEquipoHoja(f[0]);
+      const entrada = finanzasEquipos.find(x => _claveEquipoHoja(x.equipo) === clave);
+      if (entrada) entrada.abonos.push({ id: `A_REC_${i}`, monto: _montoHoja(f[1]), fecha: String(f[2] || '') });
     });
 
     const personas = new Map();
@@ -323,11 +355,14 @@ async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
     let precioRoja = 0;
     finJugadoresFilas.slice(1).forEach((f, i) => {
       const [nombre, equipo, origenRaw, conceptoRaw, montoRaw, pagadoRaw] = f;
-      const jugador = jugadores.find(j => j.equipo === String(equipo || '') && j.nombre === String(nombre || ''));
+      const jugador = jugadores.find(j =>
+        _claveEquipoHoja(j.equipo) === _claveEquipoHoja(equipo) &&
+        _claveEquipoHoja(j.nombre) === _claveEquipoHoja(nombre)
+      );
       if (!jugador) return;
       const origen = String(origenRaw || '').toLowerCase();
       const concepto = String(conceptoRaw || '');
-      const monto = Number(montoRaw) || 0;
+      const monto = _montoHoja(montoRaw);
       const pagadoTxt = String(pagadoRaw || '').toLowerCase();
       const pagado = pagadoTxt === 'sí' || pagadoTxt === 'si';
       const entrada = entradaFinanzas(jugador);
@@ -378,7 +413,8 @@ async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
 
     mostrarPantalla('app');
     cargarDatosApp();
-    mostrarExito(`Torneo “${nombre}” recuperado desde Google Drive`);
+    const totalAbonos = finanzasEquipos.reduce((total, f) => total + f.abonos.length, 0);
+    mostrarExito(`Torneo “${nombre}” recuperado desde Google Drive · ${totalAbonos} abono(s) cargado(s)`);
     setTimeout(() => {
       abrirModalConfiguracionTorneo();
       mostrarError('Revisa los precios del torneo. La hoja anterior no guardaba el precio de inscripción ni todos los datos personales de jugadores.');
