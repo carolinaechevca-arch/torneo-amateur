@@ -3,6 +3,28 @@
    ============================================= */
 
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE_FILES_BASE = 'https://www.googleapis.com/drive/v3/files';
+
+/* Lista las hojas que esta aplicación creó o que el usuario abrió con ella.
+   El alcance drive.file no expone los demás archivos privados del Drive. */
+async function listarSpreadsheetsDrive() {
+  const token = obtenerToken();
+  const params = new URLSearchParams({
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+    fields: 'files(id,name,modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: '100'
+  });
+  const resp = await fetch(`${DRIVE_FILES_BASE}?${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'No se pudieron buscar torneos en Google Drive');
+  }
+  const data = await resp.json();
+  return data.files || [];
+}
 
 /* Crea una nueva hoja de cálculo con las hojas indicadas.
    Devuelve el objeto completo de la respuesta de la API. */

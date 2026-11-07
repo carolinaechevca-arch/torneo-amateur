@@ -171,6 +171,226 @@ function cargarDatosApp() {
 }
 
 /* ──────────────────────────────────────────────
+   RECUPERAR UN TORNEO EXISTENTE DESDE DRIVE
+   ────────────────────────────────────────────── */
+
+async function abrirSelectorTorneosDrive() {
+  mostrarCarga('Buscando torneos en tu Google Drive...');
+  try {
+    const archivos = await listarSpreadsheetsDrive();
+    cerrarSelectorTorneosDrive();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'drive-torneos-overlay';
+    overlay.innerHTML = `
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Abrir torneo existente">
+        <div class="modal-header">
+          <h2><i class="bi bi-folder2-open"></i> Torneos en Google Drive</h2>
+          <button class="modal-cerrar" id="drive-torneos-cerrar" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+          <p class="info-texto" style="margin-bottom:1rem">Selecciona la hoja de cálculo que corresponde al torneo.</p>
+          <div class="drive-torneos-lista" id="drive-torneos-lista"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const lista = overlay.querySelector('#drive-torneos-lista');
+    if (archivos.length === 0) {
+      const vacio = document.createElement('p');
+      vacio.className = 'sin-datos';
+      vacio.textContent = 'No se encontraron hojas creadas por esta aplicación en esta cuenta.';
+      lista.appendChild(vacio);
+    } else {
+      archivos.forEach(archivo => {
+        const btn = document.createElement('button');
+        btn.className = 'drive-torneo-btn';
+        const nombre = document.createElement('strong');
+        nombre.textContent = archivo.name;
+        const fecha = document.createElement('span');
+        fecha.className = 'drive-torneo-fecha';
+        fecha.textContent = archivo.modifiedTime ? new Date(archivo.modifiedTime).toLocaleDateString('es-CO') : '';
+        btn.append(nombre, fecha);
+        btn.onclick = () => recuperarTorneoDesdeDrive(archivo.id, archivo.name);
+        lista.appendChild(btn);
+      });
+    }
+
+    overlay.querySelector('#drive-torneos-cerrar').onclick = cerrarSelectorTorneosDrive;
+    overlay.addEventListener('click', e => { if (e.target === overlay) cerrarSelectorTorneosDrive(); });
+  } catch (err) {
+    mostrarError('No se pudieron buscar los torneos: ' + err.message);
+  } finally {
+    ocultarCarga();
+  }
+}
+
+function cerrarSelectorTorneosDrive() {
+  document.getElementById('drive-torneos-overlay')?.remove();
+}
+
+async function _leerHojaOpcional(sheetId, rango) {
+  try { return await leerHoja(sheetId, rango); }
+  catch (_) { return []; }
+}
+
+function _numeroHoja(valor) {
+  if (valor === '' || valor === null || typeof valor === 'undefined') return '';
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : valor;
+}
+
+async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
+  cerrarSelectorTorneosDrive();
+  mostrarCarga('Recuperando la información del torneo...');
+
+  try {
+    const [equiposFilas, fixtureFilas, statsFilas, jornadasFilas, finEquiposFilas,
+      finJugadoresFilas, resolucionesFilas, plantillasFilas] = await Promise.all([
+      leerHoja(sheetId, 'Equipos!A:B'),
+      leerHoja(sheetId, 'Fixture!A:G'),
+      _leerHojaOpcional(sheetId, 'Estadísticas!A:G'),
+      _leerHojaOpcional(sheetId, 'Jornadas!A:F'),
+      _leerHojaOpcional(sheetId, 'Finanzas_Equipos!A:C'),
+      _leerHojaOpcional(sheetId, 'Finanzas_Jugadores!A:F'),
+      _leerHojaOpcional(sheetId, 'Resoluciones!A:D'),
+      _leerHojaOpcional(sheetId, 'Plantillas_Resolucion!A:C')
+    ]);
+
+    const equipos = equiposFilas.slice(1).map(f => String(f[1] || '').trim()).filter(Boolean);
+    if (equipos.length < 2) throw new Error('La hoja seleccionada no contiene una lista válida de equipos.');
+
+    const fixture = fixtureFilas.slice(1).filter(f => f[1]).map(f => ({
+      jornada: Number(f[0]) || 0,
+      id: String(f[1]),
+      local: String(f[2] || ''),
+      visitante: String(f[3] || ''),
+      golesLocal: _numeroHoja(f[4]),
+      golesVisitante: _numeroHoja(f[5]),
+      estado: String(f[6] || 'pendiente')
+    }));
+    if (fixture.length === 0) throw new Error('La hoja seleccionada no contiene un fixture válido.');
+
+    const stats = statsFilas.slice(1).filter(f => f[2] && f[3]).map((f, i) => ({
+      id: `S_REC_${Date.now()}_${i}`,
+      jornada: Number(f[0]) || 0,
+      partidoId: String(f[1] || ''),
+      equipo: String(f[2]),
+      jugador: String(f[3]),
+      goles: Number(f[4]) || 0,
+      amarillas: Number(f[5]) || 0,
+      rojas: Number(f[6]) || 0,
+      sancionado: false
+    }));
+
+    const horarios = jornadasFilas.slice(1).filter(f => f[1]).map(f => ({
+      jornada: Number(f[0]) || 0,
+      partidoId: String(f[1]),
+      fecha: String(f[4] || ''),
+      hora: String(f[5] || '')
+    }));
+
+    const finanzasEquipos = equipos.map(equipo => ({ equipo, abonos: [] }));
+    finEquiposFilas.slice(1).forEach((f, i) => {
+      const entrada = finanzasEquipos.find(x => x.equipo === String(f[0] || ''));
+      if (entrada) entrada.abonos.push({ id: `A_REC_${i}`, monto: Number(f[1]) || 0, fecha: String(f[2] || '') });
+    });
+
+    const personas = new Map();
+    const agregarPersona = (equipo, nombre) => {
+      equipo = String(equipo || '').trim();
+      nombre = String(nombre || '').trim();
+      if (!equipo || !nombre) return;
+      const clave = `${equipo}\u0000${nombre}`;
+      if (!personas.has(clave)) personas.set(clave, {
+        id: `J_REC_${personas.size}_${Date.now()}`,
+        equipo, nombre, numeroCamisa: '', cedula: '', celular: ''
+      });
+    };
+    stats.forEach(s => agregarPersona(s.equipo, s.jugador));
+    finJugadoresFilas.slice(1).forEach(f => agregarPersona(f[1], f[0]));
+    const jugadores = [...personas.values()];
+
+    const finanzasJugadores = [];
+    const entradaFinanzas = jugador => {
+      let entrada = finanzasJugadores.find(x => x.jugadorId === jugador.id);
+      if (!entrada) { entrada = { jugadorId: jugador.id, cargos: [] }; finanzasJugadores.push(entrada); }
+      return entrada;
+    };
+
+    let precioAmarilla = 0;
+    let precioRoja = 0;
+    finJugadoresFilas.slice(1).forEach((f, i) => {
+      const [nombre, equipo, origenRaw, conceptoRaw, montoRaw, pagadoRaw] = f;
+      const jugador = jugadores.find(j => j.equipo === String(equipo || '') && j.nombre === String(nombre || ''));
+      if (!jugador) return;
+      const origen = String(origenRaw || '').toLowerCase();
+      const concepto = String(conceptoRaw || '');
+      const monto = Number(montoRaw) || 0;
+      const pagadoTxt = String(pagadoRaw || '').toLowerCase();
+      const pagado = pagadoTxt === 'sí' || pagadoTxt === 'si';
+      const entrada = entradaFinanzas(jugador);
+
+      if (origen === 'tarjetas') {
+        const jornada = Number(concepto.match(/J(\d+)/i)?.[1] || 0);
+        const stat = stats.find(s => s.equipo === jugador.equipo && s.jugador === jugador.nombre && (!jornada || s.jornada === jornada));
+        if (!stat) return;
+        entrada.cargos.push({
+          id: `T_${stat.id}`, origen: 'tarjetas', statId: stat.id,
+          amarillas: stat.amarillas, rojas: stat.rojas, fecha: `J${stat.jornada}`,
+          monto, pagado
+        });
+        if (!precioRoja && (stat.rojas > 0 || stat.amarillas >= 2)) precioRoja = monto;
+        if (!precioAmarilla && stat.rojas === 0 && stat.amarillas > 0 && stat.amarillas < 2) precioAmarilla = monto / stat.amarillas;
+      } else {
+        const numero = Number(concepto.match(/#(\d+)/)?.[1] || 0);
+        entrada.cargos.push({
+          id: `R_REC_${i}`, origen: 'resolucion', resolucionNumero: numero,
+          concepto: concepto.replace(/^Resolución\s*#?\d*\s*[·-]?\s*/i, ''), monto, pagado
+        });
+      }
+    });
+
+    const resoluciones = resolucionesFilas.slice(1).map(f => {
+      try { return JSON.parse(f[3]); }
+      catch (_) { return null; }
+    }).filter(Boolean);
+    const plantillas = plantillasFilas.slice(1).filter(f => f[0]).map(f => ({
+      id: String(f[0]), nombre: String(f[1] || ''), texto: String(f[2] || '')
+    }));
+    const maxJornada = Math.max(...fixture.map(p => Number(p.jornada) || 0));
+    const jornadasIda = equipos.length % 2 ? equipos.length : equipos.length - 1;
+    const modalidad = maxJornada > jornadasIda ? 'ida-vuelta' : 'ida';
+    const nombre = String(nombreArchivo || 'Torneo recuperado').replace(/^⚽\s*/, '').trim();
+
+    guardarTorneoLocal({ sheetId, nombre, equipos, modalidad, precioInscripcion: 0, precioAmarilla, precioRoja });
+    guardarFixtureLocal(fixture);
+    guardarStatsLocal(stats);
+    guardarHorariosLocal(horarios);
+    guardarJugadoresLocal(jugadores);
+    guardarHistorialLocal([]);
+    guardarFinanzasEquiposLocal(finanzasEquipos);
+    guardarFinanzasJugadoresLocal(finanzasJugadores);
+    guardarResolucionesLocal(resoluciones);
+    guardarPlantillasResolucionLocal(plantillas);
+    guardarResolucionesContadorLocal(Math.max(0, ...resoluciones.map(r => Number(r.numero) || 0)));
+
+    mostrarPantalla('app');
+    cargarDatosApp();
+    mostrarExito(`Torneo “${nombre}” recuperado desde Google Drive`);
+    setTimeout(() => {
+      abrirModalConfiguracionTorneo();
+      mostrarError('Revisa los precios del torneo. La hoja anterior no guardaba el precio de inscripción ni todos los datos personales de jugadores.');
+    }, 700);
+  } catch (err) {
+    mostrarError('No se pudo recuperar el torneo: ' + err.message);
+  } finally {
+    ocultarCarga();
+  }
+}
+
+/* ──────────────────────────────────────────────
    FORMULARIO DE NUEVO TORNEO
    ────────────────────────────────────────────── */
 

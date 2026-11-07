@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
   <!-- Tema: aplicar ANTES de renderizar para evitar flash -->
   <script>
     (function () {
@@ -107,6 +107,16 @@
     <div class="setup-header">
       <h2>🏆 Crear Nuevo Torneo</h2>
       <p>Completa la información para comenzar. ¡Es muy fácil!</p>
+    </div>
+
+    <div class="setup-recuperar">
+      <div>
+        <strong>¿Ya tienes un torneo en Google Drive?</strong>
+        <p>Ábrelo y recupera la información guardada en su hoja de cálculo.</p>
+      </div>
+      <button class="btn-secundario" onclick="abrirSelectorTorneosDrive()">
+        <i class="bi bi-folder2-open"></i> Abrir torneo existente
+      </button>
     </div>
 
     <div class="setup-card">
@@ -723,8 +733,8 @@
      Subir este número cada vez que se modifique cualquier .js o .css.
      ════════════════════════════════════════ -->
 <script src="js/auth.js?v=7"></script>
-<script src="js/sheets.js?v=4"></script>
-<script src="js/torneo.js?v=4"></script>
+<script src="js/sheets.js?v=5"></script>
+<script src="js/torneo.js?v=5"></script>
 <script src="js/equipos.js?v=4"></script>
 <script src="js/resultados.js?v=4"></script>
 <script src="js/posiciones.js?v=4"></script>

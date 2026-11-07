@@ -514,6 +514,43 @@ label   { font-weight: 600; }
 
 .setup-container { max-width: 680px; margin: 0 auto; }
 
+.setup-recuperar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radio);
+  background: var(--c-bg-card);
+  box-shadow: var(--sombra-s);
+}
+
+.setup-recuperar p {
+  margin-top: .2rem;
+  color: var(--c-text-secondary);
+  font-size: .88rem;
+}
+
+.drive-torneos-lista { display: grid; gap: .7rem; }
+.drive-torneo-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radio-s);
+  background: var(--c-surface);
+  color: var(--c-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.drive-torneo-btn:hover { border-color: var(--c-primary); }
+.drive-torneo-fecha { color: var(--c-text-muted); font-size: .78rem; white-space: nowrap; }
+
 .setup-header { text-align: center; margin-bottom: 2rem; }
 .setup-header h2 { color: var(--c-primary-dark); }
 .setup-header p  { color: var(--c-text-secondary); margin-top: .4rem; font-weight: 400; }
@@ -800,6 +837,7 @@ label   { font-weight: 600; }
 }
 
 @media (max-width: 767px) {
+  .setup-recuperar { align-items: stretch; flex-direction: column; }
   #pantalla-app { flex-direction: column; }
   .app-topbar   { display: flex; }
 
