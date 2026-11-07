@@ -12,6 +12,7 @@ let tokenClient = null;
 let _accessToken = null;
 let _usuarioActual = null;
 let _refrescoTokenTimeoutId = null;
+let _reintentandoTrasPopup = false;
 
 /* Inicializa el cliente de token de Google Identity Services */
 function inicializarAuth() {
@@ -41,6 +42,7 @@ function inicializarAuth() {
 /* Procesa la respuesta del token de Google */
 async function _manejarTokenRespuesta(resp) {
   if (resp.error) {
+    _reintentandoTrasPopup = false;
     const detalle = resp.error_description || _mensajeErrorOAuth(resp.error);
     _mostrarErrorLogin(detalle, resp.error, resp.error_uri);
     mostrarError('No se pudo iniciar sesión: ' + detalle);
@@ -50,6 +52,7 @@ async function _manejarTokenRespuesta(resp) {
   try {
     if (!resp.access_token) throw new Error('Google no devolvió un token de acceso.');
 
+    _reintentandoTrasPopup = false;
     _accessToken = resp.access_token;
     // Guardar token con 1 minuto de margen antes de vencimiento
     const expira = Date.now() + Number(resp.expires_in || 3600) * 1000 - 60_000;
@@ -71,6 +74,30 @@ async function _manejarTokenRespuesta(resp) {
    forman parte de la respuesta OAuth (por ejemplo, popup bloqueado o cerrado). */
 function _manejarErrorVentanaOAuth(err) {
   const tipo = err?.type || 'error_desconocido';
+
+  // Algunas cuentas pasan por la advertencia de "app no verificada". En ciertos
+  // navegadores esa pantalla separa la ventana de su página de origen y Google
+  // informa popup_closed aunque el usuario todavía esté aceptando los permisos.
+  // Al regresar el foco a la app, pedimos el token sin volver a mostrar ventanas.
+  if (tipo === 'popup_closed' && !_reintentandoTrasPopup) {
+    _reintentandoTrasPopup = true;
+    const recuperarToken = () => {
+      setTimeout(() => {
+        if (!tokenClient) {
+          _reintentandoTrasPopup = false;
+          _mostrarErrorLogin('No se pudo recuperar la autorización de Google.', 'token_client_no_disponible');
+          return;
+        }
+        tokenClient.requestAccessToken({ prompt: 'none' });
+      }, 600);
+    };
+
+    if (document.hasFocus()) recuperarToken();
+    else window.addEventListener('focus', recuperarToken, { once: true });
+    return;
+  }
+
+  _reintentandoTrasPopup = false;
   const mensajes = {
     popup_failed_to_open: 'El navegador bloqueó la ventana de inicio de sesión de Google. Habilita las ventanas emergentes e inténtalo nuevamente.',
     popup_closed: 'La ventana de Google se cerró antes de terminar la autorización.',
@@ -88,6 +115,7 @@ function _mensajeErrorOAuth(codigo) {
     disallowed_useragent: 'Google no permite iniciar sesión desde este navegador o ventana.',
     invalid_client: 'La configuración de acceso de la aplicación no es válida.',
     invalid_scope: 'La aplicación está solicitando un permiso que Google no reconoce.',
+    interaction_required: 'Google necesita que vuelvas a confirmar el acceso desde la ventana de autorización.',
     org_internal: 'Esta aplicación solo permite cuentas de la organización configurada.'
   };
   return mensajes[codigo] || `Google devolvió el error “${codigo}”.`;
@@ -161,6 +189,7 @@ function _verificarYMostrarApp() {
 
 /* Inicia el flujo OAuth con la ventana emergente de Google */
 function iniciarSesion() {
+  _reintentandoTrasPopup = false;
   _limpiarErrorLogin();
   if (!tokenClient) {
     inicializarAuth();
