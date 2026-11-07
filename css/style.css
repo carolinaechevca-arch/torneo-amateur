@@ -470,6 +470,22 @@ label   { font-weight: 600; }
   font-weight: 400;
 }
 
+.login-error {
+  margin-top: 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--c-danger) 55%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-danger) 12%, transparent);
+  color: var(--c-text);
+  font-size: .88rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.login-error strong { color: var(--c-danger); }
+.login-error p { margin: .35rem 0 0; }
+.login-error-codigo { font-family: monospace; font-size: .8rem; opacity: .85; }
+
 /* Mobile */
 @media (max-width: 700px) {
   .login-split { flex-direction: column; height: 100%; overflow: hidden; }
