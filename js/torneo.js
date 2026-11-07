@@ -398,8 +398,14 @@ async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
     const jornadasIda = equipos.length % 2 ? equipos.length : equipos.length - 1;
     const modalidad = maxJornada > jornadasIda ? 'ida-vuelta' : 'ida';
     const nombre = String(nombreArchivo || 'Torneo recuperado').replace(/^⚽\s*/, '').trim();
+    // Las hojas antiguas no guardaban el precio de inscripción por separado.
+    // Como la app nunca permitía abonar más que el valor total, el mayor total
+    // abonado por un equipo permite recuperar el precio cuando alguno ya pagó.
+    const precioInscripcion = Math.max(0, ...finanzasEquipos.map(f =>
+      f.abonos.reduce((total, abono) => total + (_montoHoja(abono.monto) || 0), 0)
+    ));
 
-    guardarTorneoLocal({ sheetId, nombre, equipos, modalidad, precioInscripcion: 0, precioAmarilla, precioRoja });
+    guardarTorneoLocal({ sheetId, nombre, equipos, modalidad, precioInscripcion, precioAmarilla, precioRoja });
     guardarFixtureLocal(fixture);
     guardarStatsLocal(stats);
     guardarHorariosLocal(horarios);
@@ -415,10 +421,12 @@ async function recuperarTorneoDesdeDrive(sheetId, nombreArchivo) {
     cargarDatosApp();
     const totalAbonos = finanzasEquipos.reduce((total, f) => total + f.abonos.length, 0);
     mostrarExito(`Torneo “${nombre}” recuperado desde Google Drive · ${totalAbonos} abono(s) cargado(s)`);
-    setTimeout(() => {
-      abrirModalConfiguracionTorneo();
-      mostrarError('Revisa los precios del torneo. La hoja anterior no guardaba el precio de inscripción ni todos los datos personales de jugadores.');
-    }, 700);
+    if (precioInscripcion <= 0) {
+      setTimeout(() => {
+        abrirModalConfiguracionTorneo();
+        mostrarError('No se pudo deducir el precio de inscripción. Escríbelo en Configuración para calcular los saldos pendientes.');
+      }, 700);
+    }
   } catch (err) {
     mostrarError('No se pudo recuperar el torneo: ' + err.message);
   } finally {
