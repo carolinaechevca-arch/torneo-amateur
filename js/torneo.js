@@ -586,6 +586,10 @@ function abrirModalConfiguracionTorneo() {
           Cambiar estos precios no recalcula los cobros que ya existen; solo aplica a las tarjetas que se registren o editen de ahora en más.
         </p>
         <button class="btn-principal" style="margin-top:1rem" onclick="guardarConfiguracionTorneo()"><i class="bi bi-check-lg"></i> Guardar</button>
+        <button class="btn-secundario" style="margin-top:.75rem" onclick="recargarTorneoActualDesdeDrive()">
+          <i class="bi bi-cloud-arrow-down-fill"></i> Recargar datos desde Drive
+        </button>
+        <p class="info-texto" style="margin-top:.45rem">Reemplaza únicamente la copia de este navegador; no modifica la hoja de Google Drive.</p>
       </div>
     </div>
   `;
@@ -615,6 +619,21 @@ function guardarConfiguracionTorneo() {
   cerrarModalConfiguracionTorneo();
   renderizarEquipos();
   mostrarExito('✅ Configuración del torneo actualizada');
+}
+
+async function recargarTorneoActualDesdeDrive() {
+  if (!torneoActual?.sheetId) return;
+  const sheetId = torneoActual.sheetId;
+  const nombre = torneoActual.nombre;
+  const ok = await confirmarAccion({
+    titulo: 'Recargar desde Drive',
+    mensaje: 'Se reemplazarán los datos guardados en este navegador por los que están actualmente en Google Drive. La hoja de Drive no se modificará.',
+    textoConfirmar: 'Recargar',
+    peligro: false
+  });
+  if (!ok) return;
+  cerrarModalConfiguracionTorneo();
+  await recuperarTorneoDesdeDrive(sheetId, `⚽ ${nombre}`);
 }
 
 /* Escribe los datos iniciales en todas las hojas del spreadsheet */
